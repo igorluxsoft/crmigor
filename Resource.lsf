@@ -1,0 +1,427 @@
+MODULE Resource;
+
+REQUIRE Contact, Dashboard, Event;
+
+CLASS Resource 'Ресурс';
+TABLE resource (Resource);
+name 'Наименование ресурса' = DATA ISTRING[100] (Resource);
+responsiblePerson 'Ответственный' = DATA User(Resource);
+nameResponsiblePerson 'Ответственный' = name(responsiblePerson(Resource r));
+note 'Примечание' = DATA TEXT (Resource) CHARWIDTH 50;
+inUse 'Исп.' = DATA BOOLEAN (Resource);
+
+///// Кем и когда создан
+createdUser = DATA User(Resource);
+nameCreatedUser 'Создан пользователем' (Resource s) = name(createdUser(s));
+
+createdDate 'Дата создания' = DATA DATE (Resource);
+createdTime 'Время создания' = DATA TIME (Resource);
+createdDateTime 'Дата/время создания' (Resource r) = dateTimeToDateTime(createdDate(r), createdTime(r));
+
+WHEN SET(Resource r IS Resource) DO {
+    createdUser(r) <- currentUser();
+    createdDate(r) <- currentDate();
+    createdTime(r) <- currentTime();
+    inUse(r) <- TRUE ;
+}
+/////
+
+CLASS Reservation 'Резервирование';
+TABLE reservation (Reservation);
+
+resource 'Ресурс' = DATA Resource(Reservation) INDEXED NONULL DELETE AUTOSET ;
+nameResource 'Ресурс' = name(resource(Reservation r));
+
+dateFrom 'Дата с' = DATA DATE (Reservation) NONULL CHARWIDTH 9;
+timeFrom 'Время с' = DATA TIME (Reservation) NONULL CHARWIDTH 9;
+dateTimeFrom 'Дата/время с' = dateTimeToDateTime(dateFrom(Reservation d), timeFrom(d)) IN id;
+
+dateTo 'Дата по' = DATA DATE (Reservation) NONULL CHARWIDTH 9;
+timeTo 'Время по' = DATA TIME (Reservation) NONULL CHARWIDTH 9;
+dateTimeTo 'Дата/время по'= dateTimeToDateTime(dateTo(Reservation d), timeTo(d)) IN id;
+
+user 'Кто резервирует' = DATA User (Reservation);
+nameUser 'Кто резервирует' = name(user(Reservation r)) CHARWIDTH 20 IN id;
+
+event 'Событие' = DATA Event (Reservation);
+nameTypeEvent 'Тип события' = nameType(event(Reservation r)) IN id;
+nameCustomerEvent 'Клиент' = nameCustomer(event(Reservation r)) IN id;
+nameEvent 'Событие' = name(event(Reservation r)) IN id;
+
+comments 'Комментарии' = DATA ISTRING[500] (Reservation);
+
+///// Кем и когда создано
+createdUser = DATA User(Reservation);
+nameCreatedUser 'Создан пользователем' (Reservation s) = name(createdUser(s));
+
+createdDate 'Дата создания' = DATA DATE (Reservation);
+createdTime 'Время создания' = DATA TIME (Reservation);
+createdDateTime 'Дата/время создания' (Reservation r) = dateTimeToDateTime(createdDate(r), createdTime(r));
+
+WHEN SET(Reservation r IS Reservation) DO {
+    createdUser(r) <- currentUser();
+    createdDate(r) <- currentDate();
+    createdTime(r) <- currentTime();
+}
+/////
+
+WHEN LOCAL SET(Reservation r IS Reservation) DO {
+    // значения по умолчанию
+    IF r IS Reservation AND NOT user(r) THEN user(r) <- currentUser();
+    IF r IS Reservation AND NOT dateFrom(r) THEN dateFrom(r) <- sum(currentDate(),1);
+    IF r IS Reservation AND NOT dateTo(r) THEN dateTo(r) <- sum(currentDate(),1);
+}
+
+CONSTRAINT dateTimeFrom(Reservation r) >= dateTimeTo(r) 
+    MESSAGE 'Дата/время по должно быть больше, чем Дата/время с'; 
+
+CONSTRAINT SETCHANGED(responsiblePerson(Resource r)) AND NOT (name(customer(responsiblePerson(r))) = 'ЛюксСофт' OR 
+    name(customer(responsiblePerson(r))) = 'ЛюксСофт Сервис')
+    CHECKED BY responsiblePerson[Resource] MESSAGE 'Только ЛюксСофт';
+
+CONSTRAINT SETCHANGED(user(Reservation r)) AND NOT (name(customer(user(r))) = 'ЛюксСофт' OR name(customer(user(r))) = 'ЛюксСофт Сервис')
+    CHECKED BY user[Reservation] MESSAGE 'Только ЛюксСофт';
+
+// проверка пересечения интервалов резервирования
+quantityDateTimeInResourse(Resource r, DATETIME t) = GROUP SUM 1 IF t>=dateTimeFrom(Reservation s) AND t<=dateTimeTo(s) AND resource(s)==r;
+CONSTRAINT quantityDateTimeInResourse(resource(Reservation s), dateTimeFrom(s)) > 1 OR quantityDateTimeInResourse(resource(s), dateTimeTo(s)) > 1
+    MESSAGE 'Интервал времени уже зарезервирован.';
+
+// для выбора событий
+lastEvent (Customer c, Employee ee) = GROUP LAST Event e ORDER date(e), time(e), e BY customer(e), employee(e);
+lastEvent (Customer c) = GROUP LAST Event e ORDER date(e), time(e), e BY customer(e);
+isLastCustomerEmployee (Event e) = e = lastEvent(customer(e), employee(e));
+isLastCustomer (Event e) = e = lastEvent(customer(e));
+
+FORM dialogEventsResource 'События'
+    OBJECTS o = Event LAST 
+    PROPERTIES(o) READONLY id, name, nameType, nameCustomer, nameLegalEntity, nameEmployee, nameContact, date, time, dateNext, descriptionString, additionString
+    ORDER date(o) DESC, time(o) DESC
+    
+    FILTERGROUP last FILTER 'Последние по клиенту (мои)' isLastCustomerEmployee(o) AND employee(o) = currentUser() AND dateNext(o) >= subtract(currentDate(), 360) 
+                     FILTER 'Последние по клиенту' isLastCustomer(o) AND dateNext(o) >= subtract(currentDate(), 360)
+;
+dialogEventsResource 'Выбор события' (Reservation r) {
+    DIALOG dialogEventsResource OBJECTS o INPUT NULL DO {
+        event(r) <- o;
+    }
+}
+//
+
+FORM resource 'Ресурс'
+    OBJECTS r = Resource PANEL  
+    PROPERTIES(r) inUse, name, nameResponsiblePerson, note
+    
+    EDIT Resource OBJECT r
+;
+
+DESIGN resource {
+    BOX (r) {
+        fill = 1;
+        type = CONTAINERV;
+        GROUP(,r){
+            type = CONTAINERV;
+            MOVE PROPERTY (name(r)) {charWidth=100;}
+            MOVE PROPERTY (nameResponsiblePerson(r)) {charWidth=100;}
+            MOVE PROPERTY (inUse(r));
+        }
+        NEW note {
+            height = 300;
+            alignment = STRETCH;
+            caption = 'Примечание';
+            MOVE PROPERTY (note(r)) { caption = ''; fill = 1; }
+        }
+    }
+}
+
+FORM reservation 'Резервирование'
+    OBJECTS r = Resource PANEL
+    PROPERTIES(r) READONLY name 
+    
+    OBJECTS d = Reservation 
+    PROPERTIES(d) dateFrom, timeFrom, dateTo, timeTo, nameUser
+    PROPERTIES(d) nameEvent ON CHANGE dialogEventsResource(d), nameTypeEvent ON CHANGE dialogEventsResource(d), nameCustomerEvent ON CHANGE dialogEventsResource(d)
+    PROPERTIES(d) comments
+    PROPERTIES(d) NEW, DELETE TOOLBAR 
+    ORDER dateFrom(d), timeFrom(d) 
+    FILTERS resource(d) == r    
+    FILTERGROUP actual
+        FILTER 'Актуальные' dateTo(d)>=currentDate() DEFAULT
+;
+
+DESIGN reservation {
+    OBJECTS {
+        NEW top {
+            fill = 1;
+            NEW top1 FIRST {
+                caption = '';
+                MOVE PROPERTY (name(r));
+            }
+            NEW tables {
+                fill = 1;
+                MOVE BOX (d);
+            }
+        }
+    }
+}
+
+editReservation 'Резервирование ресурса' (Resource r) {
+    NEWSESSION {
+        SHOW reservation OBJECTS r=r;
+    }
+}
+
+FORM resources 'Резервирование ресурсов'
+    OBJECTS r = Resource  
+    PROPERTIES(r) READONLY inUse, name, nameResponsiblePerson, note, nameCreatedUser, createdDateTime
+    PROPERTIES(r) NEWSESSION NEW, EDIT, DELETE
+    FILTERGROUP inUse
+        FILTER 'Используемые' inUse(r) DEFAULT    
+    ORDER name(r)    
+    
+    OBJECTS d = Reservation
+    PROPERTIES(d) READONLY dateFrom, timeFrom, dateTo, timeTo, nameUser, nameEvent, nameTypeEvent, nameCustomerEvent, comments, nameCreatedUser, createdDateTime
+    PROPERTIES(r) editReservation TOOLBAR DRAW d
+    ORDER dateFrom(d), timeFrom(d) 
+    FILTERS resource(d) == r    
+    FILTERGROUP actual
+        FILTER 'Актуальные' dateTo(d)>=currentDate() DEFAULT
+;
+
+///// Логирование
+CLASS ResourceLog 'Запись лога ресурсов';
+TABLE ResourceLog(ResourceLog);
+
+resource 'Ресурс' = DATA Resource (ResourceLog) INDEXED NONULL DELETE ;
+
+hostnameComputer 'Имя компьютера' = DATA ISTRING[100] (ResourceLog); 
+userLogin 'Логин пользователя' = DATA STRING[100] (ResourceLog); 
+nameContact 'Имя пользователя' =  DATA STRING[100] (ResourceLog);
+dateTimeSession 'Время изменения' = DATA DATETIME (ResourceLog);
+dateSession'Дата изменения' (ResourceLog m) = DATE(dateTimeSession(m)) CHARWIDTH 9;
+timeSession 'Время изменения' (ResourceLog m) = TIME(dateTimeSession(m)) CHARWIDTH 9;
+
+CLASS TypeChange 'Тип изменения' {
+    add 'Добавление',
+    delete 'Удаление',
+    changeName 'Изменение наименования ресурса',
+    changeNameResponsiblePerson 'Изменение ответственного',
+    changeInUse 'Изменение признака использования'
+}
+
+typeChange= DATA TypeChange (ResourceLog);
+nameTypeChange 'Тип изменения' (ResourceLog l) = staticCaption(typeChange(l)) IN id;
+
+note 'Примечание' = DATA STRING[255] (ResourceLog) CHARWIDTH 70;
+
+WHEN SET(Resource r IS Resource) DO {
+    NEW d = ResourceLog {        
+        resource(d) <- r;
+        typeChange(d) <- TypeChange.add;
+        hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+        userLogin(d) <- userLoginConnection(currentSession()); 
+        nameContact(d) <- STRING[100](nameContact(currentSession()));
+        dateTimeSession(d) <- dateTime(currentSession());             
+        note(d) <- STRING[255]('Добавлен ресурс');              
+    }
+}
+WHEN DROPPED(Resource p IS Resource) DO {
+    NEW d = ResourceLog {
+        typeChange(d) <- TypeChange.delete;
+        hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+        userLogin(d) <- userLoginConnection(currentSession()); 
+        nameContact(d) <- STRING[100](nameContact(currentSession()));
+        dateTimeSession(d) <- dateTime(currentSession());        
+        note(d) <- STRING[255]('Удален ресурс '+name(p));         
+    }
+}
+META changedFieldForLog(nameField) 
+    WHEN CHANGED(nameField(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
+        NEW d = ResourceLog {        
+            resource(d) <- m;
+            hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+            userLogin(d) <- userLoginConnection(currentSession()); 
+            nameContact(d) <- STRING[100](nameContact(currentSession()));
+            dateTimeSession(d) <- dateTime(currentSession());
+            typeChange(d) <- TypeChange.change###nameField;             
+            note(d) <- 'До: '+PREV(nameField(m))+'.После: '+ nameField(m);
+        }
+    }
+END 
+@changedFieldForLog(name){ 
+    WHEN CHANGED(name(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
+        NEW d = ResourceLog {        
+            resource(d) <- m;
+            hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+            userLogin(d) <- userLoginConnection(currentSession()); 
+            nameContact(d) <- STRING[100](nameContact(currentSession()));
+            dateTimeSession(d) <- dateTime(currentSession());
+            typeChange(d) <- TypeChange.changeName;             
+            note(d) <- 'До: '+PREV(name(m))+'.После: '+ name(m);
+        }
+    }
+};
+@changedFieldForLog(nameResponsiblePerson){ 
+    WHEN CHANGED(nameResponsiblePerson(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
+        NEW d = ResourceLog {        
+            resource(d) <- m;
+            hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+            userLogin(d) <- userLoginConnection(currentSession()); 
+            nameContact(d) <- STRING[100](nameContact(currentSession()));
+            dateTimeSession(d) <- dateTime(currentSession());
+            typeChange(d) <- TypeChange.changeNameResponsiblePerson;             
+            note(d) <- 'До: '+PREV(nameResponsiblePerson(m))+'.После: '+ nameResponsiblePerson(m);
+        }
+    }
+};
+WHEN CHANGED(inUse(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
+    NEW d = ResourceLog {        
+        resource(d) <- m;
+        hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+        userLogin(d) <- userLoginConnection(currentSession()); 
+        nameContact(d) <- STRING[100](nameContact(currentSession()));
+        dateTimeSession(d) <- dateTime(currentSession());
+        typeChange(d) <- TypeChange.changeInUse;             
+        note(d) <- 'До: '+(IF PREV(inUse(m)) THEN 'TRUE' ELSE 'FALSE')+'.После: '+ (IF inUse(m) THEN 'TRUE' ELSE 'FALSE');
+    }
+}
+
+CLASS ReservationLog 'Запись лога резервирования';
+TABLE ReservationLog(ReservationLog);
+
+resource = DATA Resource (ReservationLog) INDEXED NONULL DELETE;
+
+prevNameUser 'Кто резервирует (пред.)' = DATA ISTRING[100] (ReservationLog);
+nameUser 'Кто резервирует' = DATA ISTRING[100] (ReservationLog);
+
+nameEvent 'Событие' = DATA ISTRING[100] (ReservationLog);
+nameTypeEvent 'Тип события' = DATA ISTRING[100] (ReservationLog);
+nameCustomerEvent 'Клиент' = DATA ISTRING[250] (ReservationLog);
+
+prevDateFrom 'Дата с (пред.)' = DATA DATE (ReservationLog) CHARWIDTH 9;
+dateFrom 'Дата с' = DATA DATE (ReservationLog) CHARWIDTH 9;
+prevTimeFrom 'Время с (пред.)' = DATA TIME (ReservationLog) CHARWIDTH 9;
+timeFrom 'Время с' = DATA TIME (ReservationLog) CHARWIDTH 9;
+prevDateTo 'Дата по (пред.)' = DATA DATE (ReservationLog) CHARWIDTH 9;
+dateTo 'Дата по' = DATA DATE (ReservationLog) CHARWIDTH 9;
+prevTimeTo 'Время по (пред.)' = DATA TIME (ReservationLog) CHARWIDTH 9;
+timeTo 'Время по' = DATA TIME (ReservationLog) CHARWIDTH 9;
+
+nameUserSession 'Имя пользователя'  = DATA STRING[100] (ReservationLog);
+dateTimeSession 'Время изменения' = DATA DATETIME (ReservationLog);
+timeSession 'Время изменения' (ReservationLog d) = TIME(dateTimeSession(d)) CHARWIDTH 9;
+dateSession 'Дата изменения' (ReservationLog d) = DATE(dateTimeSession(d)) CHARWIDTH 9;
+
+note 'Примечание' = DATA STRING[20] (ReservationLog);
+
+WHEN  SET(Reservation d IS Reservation) DO  
+    NEW l = ReservationLog {
+        resource(l) <- resource(d);
+        nameUser(l) <- nameUser(d);
+        nameEvent(l) <- nameEvent(d);
+        nameTypeEvent(l) <- nameTypeEvent(d);
+        nameCustomerEvent(l) <- nameCustomerEvent(d);
+        dateFrom(l) <- dateFrom(d);
+        timeFrom(l) <- timeFrom(d);
+        dateTo(l) <- dateTo(d);
+        timeTo(l) <- timeTo(d);
+        
+        nameUserSession(l) <- ISTRING[100](name(currentUser()));
+        dateTimeSession(l) <- currentDateTime();
+        note(l) <- 'Добавление';
+    }
+
+WHEN (CHANGED(user(Reservation d)) OR CHANGED(dateFrom(d)) OR CHANGED(dateTo(d)) OR CHANGED(timeFrom(d)) OR CHANGED(timeTo(d)))
+     AND NOT DROPPED(d IS Reservation) AND NOT SET(d IS Reservation) DO  
+    NEW l = ReservationLog {
+        resource(l) <- resource(d);
+        prevNameUser(l) <- PREV(nameUser(d));
+        nameUser(l) <- nameUser(d);
+        nameEvent(l) <- nameEvent(d);
+        nameTypeEvent(l) <- nameTypeEvent(d);
+        nameCustomerEvent(l) <- nameCustomerEvent(d);
+        prevDateFrom(l) <- PREV(dateFrom(d));
+        dateFrom(l) <- dateFrom(d);
+        prevTimeFrom(l) <- PREV(timeFrom(d));
+        timeFrom(l) <- timeFrom(d);
+        prevDateTo(l) <- PREV(dateTo(d));
+        dateTo(l) <- dateTo(d);
+        prevTimeTo(l) <- PREV(timeTo(d));
+        timeTo(l) <- timeTo(d);
+        
+        nameUserSession(l) <- ISTRING[100](name(currentUser()));
+        dateTimeSession(l) <- currentDateTime();
+        note(l) <- 'Изменение';
+    }
+   
+WHEN DROPPED(Reservation d IS Reservation) DO  
+    NEW l = ReservationLog {
+        resource(l) <- resource(d);
+        nameUser(l) <- nameUser(d);
+        nameEvent(l) <- nameEvent(d);
+        nameTypeEvent(l) <- nameTypeEvent(d);
+        nameCustomerEvent(l) <- nameCustomerEvent(d);
+        dateFrom(l) <- dateFrom(d);
+        timeFrom(l) <- timeFrom(d);
+        dateTo(l) <- dateTo(d);
+        timeTo(l) <- timeTo(d);
+        
+        nameUserSession(l) <- ISTRING[100](name(currentUser()));
+        dateTimeSession(l) <- currentDateTime();
+        note(l) <- 'Удаление';
+    }   
+
+/////
+
+EXTEND FORM resources
+    OBJECTS dLog=ResourceLog GRID LAST 
+    PROPERTIES(dLog) READONLY hostnameComputer, userLogin, nameContact, dateSession, timeSession, nameTypeChange, note
+    ORDER dateSession(dLog), timeSession(dLog)
+    FILTERS resource(dLog) == r
+
+    OBJECTS ddLog = ReservationLog GRID LAST 
+    PROPERTIES (ddLog) READONLY prevNameUser, nameUser, prevDateFrom, dateFrom, prevTimeFrom, timeFrom, prevDateTo, dateTo, prevTimeTo, timeTo,  
+        nameUserSession, dateSession, timeSession, note, nameEvent, nameTypeEvent, nameCustomerEvent
+    ORDER dateSession(ddLog), timeSession(ddLog)
+    FILTERS resource(ddLog) == r
+;
+
+DESIGN resources {
+    BOX{
+        NEW mainContainer{
+            type = SPLITV;
+            fill = 1;
+            MOVE BOX(r);
+            NEW tabContainer{
+                fill = 1;
+                type = TABBED;
+                MOVE BOX(d);
+                NEW documentHistory { 
+                    caption = 'История';
+                    type = CONTAINERV; 
+                    fill = 1;                   
+                    NEW historyTabs {
+                         fill = 1;
+                         type = TABBED;
+                         NEW historyLog{
+                            caption = 'По ресурсу';
+                            type = CONTAINERV;
+                            MOVE BOX(dLog);
+                         }
+                         NEW detailLog{
+                             caption = 'По резервированию';
+                             MOVE BOX(ddLog);
+                         }
+                    } 
+                }               
+            }                                
+        }
+        MOVE TOOLBARBOX;
+    }
+}
+
+NAVIGATOR {
+    dashboard {
+        NEW resources;
+    }
+}
