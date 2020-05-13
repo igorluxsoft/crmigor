@@ -10,6 +10,10 @@ nameResponsiblePerson 'Ответственный' = name(responsiblePerson(Reso
 note 'Примечание' = DATA TEXT (Resource) CHARWIDTH 50;
 inUse 'Исп.' = DATA BOOLEAN (Resource);
 
+WHEN LOCAL SET(Resource r IS Resource) DO {
+    inUse(r) <- TRUE ;
+}
+
 ///// Кем и когда создан
 createdUser = DATA User(Resource);
 nameCreatedUser 'Создан пользователем' (Resource s) = name(createdUser(s));
@@ -22,7 +26,6 @@ WHEN SET(Resource r IS Resource) DO {
     createdUser(r) <- currentUser();
     createdDate(r) <- currentDate();
     createdTime(r) <- currentTime();
-    inUse(r) <- TRUE ;
 }
 /////
 
@@ -225,6 +228,7 @@ WHEN SET(Resource r IS Resource) DO {
         note(d) <- STRING[255]('Добавлен ресурс');              
     }
 }
+
 WHEN DROPPED(Resource p IS Resource) DO {
     NEW d = ResourceLog {
         typeChange(d) <- TypeChange.delete;
@@ -235,45 +239,31 @@ WHEN DROPPED(Resource p IS Resource) DO {
         note(d) <- STRING[255]('Удален ресурс '+name(p));         
     }
 }
-META changedFieldForLog(nameField) 
-    WHEN CHANGED(nameField(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
-        NEW d = ResourceLog {        
-            resource(d) <- m;
-            hostnameComputer(d) <- hostnameComputerConnection(currentSession());
-            userLogin(d) <- userLoginConnection(currentSession()); 
-            nameContact(d) <- STRING[100](nameContact(currentSession()));
-            dateTimeSession(d) <- dateTime(currentSession());
-            typeChange(d) <- TypeChange.change###nameField;             
-            note(d) <- 'До: '+PREV(nameField(m))+'.После: '+ nameField(m);
-        }
+
+WHEN CHANGED(name(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
+    NEW d = ResourceLog {        
+        resource(d) <- m;
+        hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+        userLogin(d) <- userLoginConnection(currentSession()); 
+        nameContact(d) <- STRING[100](nameContact(currentSession()));
+        dateTimeSession(d) <- dateTime(currentSession());
+        typeChange(d) <- TypeChange.changeName;             
+        note(d) <- 'До: ' + (OVERRIDE PREV(name(m)),'') + '.После: '+ name(m);
     }
-END 
-@changedFieldForLog(name){ 
-    WHEN CHANGED(name(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
-        NEW d = ResourceLog {        
-            resource(d) <- m;
-            hostnameComputer(d) <- hostnameComputerConnection(currentSession());
-            userLogin(d) <- userLoginConnection(currentSession()); 
-            nameContact(d) <- STRING[100](nameContact(currentSession()));
-            dateTimeSession(d) <- dateTime(currentSession());
-            typeChange(d) <- TypeChange.changeName;             
-            note(d) <- 'До: '+PREV(name(m))+'.После: '+ name(m);
-        }
+}
+
+WHEN CHANGED(nameResponsiblePerson(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
+    NEW d = ResourceLog {        
+        resource(d) <- m;
+        hostnameComputer(d) <- hostnameComputerConnection(currentSession());
+        userLogin(d) <- userLoginConnection(currentSession()); 
+        nameContact(d) <- STRING[100](nameContact(currentSession()));
+        dateTimeSession(d) <- dateTime(currentSession());
+        typeChange(d) <- TypeChange.changeNameResponsiblePerson;             
+        note(d) <- 'До: ' + (OVERRIDE PREV(nameResponsiblePerson(m)),'') + '.После: '+ nameResponsiblePerson(m);
     }
-};
-@changedFieldForLog(nameResponsiblePerson){ 
-    WHEN CHANGED(nameResponsiblePerson(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
-        NEW d = ResourceLog {        
-            resource(d) <- m;
-            hostnameComputer(d) <- hostnameComputerConnection(currentSession());
-            userLogin(d) <- userLoginConnection(currentSession()); 
-            nameContact(d) <- STRING[100](nameContact(currentSession()));
-            dateTimeSession(d) <- dateTime(currentSession());
-            typeChange(d) <- TypeChange.changeNameResponsiblePerson;             
-            note(d) <- 'До: '+PREV(nameResponsiblePerson(m))+'.После: '+ nameResponsiblePerson(m);
-        }
-    }
-};
+}
+
 WHEN CHANGED(inUse(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS Resource) DO {
     NEW d = ResourceLog {        
         resource(d) <- m;
@@ -282,7 +272,7 @@ WHEN CHANGED(inUse(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS 
         nameContact(d) <- STRING[100](nameContact(currentSession()));
         dateTimeSession(d) <- dateTime(currentSession());
         typeChange(d) <- TypeChange.changeInUse;             
-        note(d) <- 'До: '+(IF PREV(inUse(m)) THEN 'TRUE' ELSE 'FALSE')+'.После: '+ (IF inUse(m) THEN 'TRUE' ELSE 'FALSE');
+        note(d) <- 'До: ' + (IF PREV(inUse(m)) THEN 'TRUE' ELSE 'FALSE') + '.После: ' + (IF inUse(m) THEN 'TRUE' ELSE 'FALSE');
     }
 }
 
