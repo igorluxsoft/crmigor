@@ -99,6 +99,7 @@ isLastCustomer (Event e) = e = lastEvent(customer(e));
 FORM dialogEventsResource 'События'
     OBJECTS o = Event LAST 
     PROPERTIES(o) READONLY id, name, nameType, nameCustomer, nameLegalEntity, nameEmployee, nameContact, date, time, dateNext, descriptionString, additionString
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
     ORDER date(o) DESC, time(o) DESC
     
     FILTERGROUP last FILTER 'Последние по клиенту (мои)' isLastCustomerEmployee(o) AND employee(o) = currentUser() AND dateNext(o) >= subtract(currentDate(), 360) 
