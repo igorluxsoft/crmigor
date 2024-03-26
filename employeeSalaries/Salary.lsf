@@ -127,7 +127,7 @@ newReportingMonth 'Добавить'() {
             APPLY;
         }    
     }
-} IMAGE 'new.png';
+} IMAGE 'add.png';
 
 /// Исп. для редактирования записи (корр-ка полей без полей Год и Месяц !!!)
 FORM editReportingMonth 'Отчетный месяц'
