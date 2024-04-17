@@ -20,7 +20,7 @@ maxYearReportingMonth = GROUP MAX year(ReportingMonth r);
 maxMonthReportingMonth = month(GROUP MAX number(month(ReportingMonth r)) IF year(r)=maxYearReportingMonth()) ;
 
 
-CLASS Transfer 'Начисление';
+CLASS Transfer 'Выплата';
 in 'Отм.' = DATA LOCAL NESTED BOOLEAN (Transfer);
 number 'Номер документа' = DATA STRING[15] (Transfer);
 date 'Дата документа' = DATA DATE (Transfer);
@@ -29,7 +29,7 @@ numberMonth 'Месяц' (Transfer t) = number(month(t));
 nameMonth 'Месяц' (Transfer t) = staticCaption(month(t));
 
 year 'Год' = DATA INTEGER (Transfer) NONULL ;
-operation 'Операция' = DATA MoveMoneyOpreration (Transfer);
+operation 'Операция' = DATA MoveMoneyOpreration (Transfer) NONULL ;
 nameOperation 'Операция' (Transfer t) = name(operation(t));
 employee 'Сотрудник' = DATA Employee (Transfer) NONULL ;
 nameEmployee 'Сотрудник' (Transfer t) = fullName(employee(t));
@@ -39,7 +39,7 @@ note 'Примечание' = DATA STRING (Transfer);
 
 transfer = GROUP MAX Transfer t BY number(t), date(t), operation(t);
 
-sumTransfer 'Сумма начислений' = GROUP SUM sum(Transfer t) BY employee(t), month(t), year(t);
+sumTransfer 'Выплачено' = GROUP SUM sum(Transfer t) BY employee(t), month(t), year(t);
 
 
 CLASS Salary 'Зарплата сотрудников';
@@ -72,7 +72,7 @@ note2 'Примечание-2' = DATA STRING (Salary)  CHARWIDTH 30;
 sumPay 'Сумма к выплате' = DATA NUMERIC[12,2] (Salary);
 sumPayUSD 'Сумма к выплате, USD' (Salary s) = DATA NUMERIC[12,2] (Salary);
 
-sumTransfer 'Сумма начислений' (Salary s) = sumTransfer(employee(s), month(s), year(s));
+sumTransfer 'Выплачено' (Salary s) = sumTransfer(employee(s), month(s), year(s));
 
 payExtra 'Доплатить (в бухгалтерию)' = DATA NUMERIC[12,2] (Salary);
 payExtraCash 'Доплатить наличными' = DATA NUMERIC[12,2] (Salary);
@@ -167,12 +167,26 @@ DESIGN editReportingMonth {
 } IMAGE 'edit.png';
 ///
 
+// Кнопки для "калькулятора"
+setPayExtra '+ Откл.' (Salary s) {
+    IF NOT payExtra(s) (+) deltaPay(s) < 0.0 THEN {
+        payExtra(s) <- payExtra(s) (+) deltaPay(s);
+        deltaPay(s) <- NULL;
+    }
+}
+setPayExtraCash '+ Откл.' (Salary s) {
+    IF NOT payExtraCash(s) (+) deltaPay(s) < 0.0 THEN {
+        payExtraCash(s) <- payExtraCash(s) (+) deltaPay(s);
+        deltaPay(s) <- NULL;
+    }
+}
+
 FORM salary 'Начисление зарплаты'
     OBJECTS s = Salary PANEL 
     PROPERTIES(s) nameEmployee, nameMonth, year, sumSalary, sumBonus1, sumBonus2, sumBonus3, sumFine1, sumFine2, sumFine3, 
                   note1, note2, isReturn, sumBonusQuarter, ktu
     PROPERTIES(s) READONLY sumPay, sumPayUSD, sumTransfer, absenceHours, deltaReal FOREGROUND(RGB(255,0,0))
-    PROPERTIES(s) payExtra, payExtraCash 
+    PROPERTIES(s) payExtra, setPayExtra, payExtraCash, setPayExtraCash 
     PROPERTIES(s) FOREGROUND(RGB(0,0,255)) deltaPay READONLY 
     EDIT Salary OBJECT s
     
@@ -187,76 +201,85 @@ DESIGN salary {
         NEW cnt1 {
             caption = 'Основные параметры';
             horizontal = TRUE;
-            MOVE PROPERTY (nameEmployee(s));
-            MOVE PROPERTY (nameMonth(s));
-            MOVE PROPERTY (year(s));
-            MOVE PROPERTY (sumSalary(s));
+            MOVE PROPERTY (nameEmployee(s)) {fontSize = 16;}
+            MOVE PROPERTY (nameMonth(s)) {fontSize = 16;}
+            MOVE PROPERTY (year(s)) {fontSize = 16;}
+            MOVE PROPERTY (sumSalary(s)) {fontSize = 16;}
         }
         NEW cnt2 {
             caption = 'Премии';
             horizontal = TRUE;
-            MOVE PROPERTY (sumBonus1(s));
-            MOVE PROPERTY (sumBonus2(s));
-            MOVE PROPERTY (sumBonus3(s));
+            MOVE PROPERTY (sumBonus1(s)) {fontSize = 16;}
+            MOVE PROPERTY (sumBonus2(s)) {fontSize = 16;}
+            MOVE PROPERTY (sumBonus3(s)) {fontSize = 16;}
         }
         NEW cnt21 {
             caption = 'Премия за квартал';
             horizontal = TRUE;
-            MOVE PROPERTY (sumBonusQuarter(s));
-            MOVE PROPERTY (ktu(s));
+            MOVE PROPERTY (sumBonusQuarter(s)) {fontSize = 16;}
+            MOVE PROPERTY (ktu(s)) {fontSize = 16;}
         }
         NEW cnt3 {
             caption = 'Штрафы';
             horizontal = TRUE;
-            MOVE PROPERTY (sumFine1(s));
-            MOVE PROPERTY (sumFine2(s));
-            MOVE PROPERTY (sumFine3(s));
-            MOVE PROPERTY (absenceHours(s));
+            MOVE PROPERTY (sumFine1(s)) {fontSize = 16;}
+            MOVE PROPERTY (sumFine2(s)) {fontSize = 16;}
+            MOVE PROPERTY (sumFine3(s)) {fontSize = 16;}
+            MOVE PROPERTY (absenceHours(s)) {fontSize = 16;}
         }
         NEW cnt4 {
             caption = 'Примечания';
-            MOVE PROPERTY (note1(s)) {charWidth=120;}
-            MOVE PROPERTY (note2(s)) {charWidth=120;}
+            MOVE PROPERTY (note1(s)) {charWidth=120; fontSize = 16;}
+            MOVE PROPERTY (note2(s)) {charWidth=120; fontSize = 16;}
         }
         NEW cnt5 {
             caption = 'К выплате';
             horizontal = TRUE;
-            MOVE PROPERTY (sumPay(s));
-            MOVE PROPERTY (sumPayUSD(s));
+            MOVE PROPERTY (sumPay(s)) {fontSize = 16;}
+            MOVE PROPERTY (sumPayUSD(s)) {fontSize = 16;}
         }
         NEW cnt6 {
-            caption = 'Начисления';
+            caption = 'Выплаты';
             horizontal = TRUE;
-            MOVE PROPERTY (sumTransfer(s));
+            MOVE PROPERTY (sumTransfer(s)) {fontSize = 16;}
         }
         NEW cnt7 {
             caption = 'Доплатить';
             horizontal = TRUE;
-            MOVE PROPERTY (payExtra(s));
-            MOVE PROPERTY (payExtraCash(s));
-            MOVE PROPERTY (deltaPay(s));
+            MOVE PROPERTY (payExtra(s)) {fontSize = 16;}
+            MOVE PROPERTY (setPayExtra(s)){fontSize = 16;}
+            MOVE PROPERTY (payExtraCash(s)) {fontSize = 16;}
+            MOVE PROPERTY (setPayExtraCash(s)){fontSize = 16;}
+            MOVE PROPERTY (deltaPay(s)) {fontSize = 16;}
         }
         NEW cnt8 {
             caption = 'Доп. параметры';
             MOVE PROPERTY (isReturn(s));
-            MOVE PROPERTY (deltaReal(s));
+            MOVE PROPERTY (deltaReal(s)) {fontSize = 16;}
         }    
     }
 }
 
+// Выбор операции
+FORM listMoveMoneyOprerationSalary 'Справочник операций'
+    OBJECTS o = MoveMoneyOpreration
+    PROPERTIES (o) READONLY code, name
+    FILTERS sign(o)='2' AND atr(o)='1'
+;
 
-FORM transfer 'Начисление'
+changeMoveMoneyOprerationSalary(Transfer t) {
+    DIALOG listMoveMoneyOprerationSalary OBJECTS o=operation(t) INPUT DO operation(t)<-o;
+}
+//
+
+FORM transfer 'Выплата'
     OBJECTS t = Transfer PANEL
-    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation, sum, note
+    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), sum, note
     EDIT Transfer OBJECT t
-    EVENTS ON INIT {
-        IF NOT month(t) THEN month(t) <- extractMonth(currentDate());
-        IF NOT year(t)  THEN year(t) <- extractYear(currentDate());
-    }
     EVENTS ON APPLY BEFORE {
         IF date(t) > lastDayOfMonth(sumMonth(currentDate(), 1)) OR date(t) < firstDayOfMonth(sumMonth(currentDate(), -1)) THEN {
-            ASK 'Внимание ! \n\n Дата начисления далеко отстоит от текущей даты : ' + toChar(date(t), 'DD.MM.YYYY') +
-                '\n\n Сохранить начисление ?' DO {
+            ASK 'Внимание ! \n\n Дата выплаты далеко отстоит от текущей даты : ' + toChar(date(t), 'DD.MM.YYYY') +
+                '\n\n Сохранить выплату ?' DO {
             }
             ELSE beforeCanceled() <- TRUE;
         }
@@ -300,8 +323,8 @@ addAllSalaries 'Добавить сотрудников' (ReportingMonth r) {
         employee(s) <- e;
         sumSalary(s) <- sumSalary(salary(e,maxYear(),maxMonth()));
         sumPay(s) <- sumSalary(s);
-        payExtra(s) <- sumPay(s) (-) sumTransfer(s);
-        deltaReal(s) <- sumPay(s) (-) sumTransfer(s);
+        payExtra(s) <- sumPay(s) (-) sumTransfer(e,month(r),year(r));
+        deltaReal(s) <- sumPay(s) (-) sumTransfer(e,month(r),year(r));
         IF curRate(r) AND curRate(r) > 0.0 THEN sumPayUSD(s) <- round2(sumPay(s) / curRate(r));
     }
     APPLY; 
@@ -313,6 +336,18 @@ background(ReportingMonth r) = CASE WHEN NOT closed(r) THEN RGB(212,255,212);
 background(Salary s) = CASE WHEN sumPay(s) (-) sumTransfer(s) < 0 THEN RGB(255,214,212)
                                      WHEN sumPay(s) (-) sumTransfer(s) > 0 THEN RGB(212,255,212) ;
 
+newTransfer 'Добавить' (ReportingMonth r, Salary s) {
+    NEWSESSION {
+        NEW t = Transfer {
+            date(t) <- currentDate();
+            month(t) <- month(r);
+            year(t) <- year(r);
+            employee(t) <- employee(s);
+            SHOW transfer OBJECTS t=t MANAGESESSION;
+        }
+    }
+} IMAGE 'add.png';
+
 FORM salaries 'Начисление зарплаты'
     OBJECTS r = ReportingMonth LAST 
     PROPERTIES(r) READONLY BACKGROUND background(r) nameMonth, year, curRate, sumBonus, closed, note
@@ -323,8 +358,8 @@ FORM salaries 'Начисление зарплаты'
     
     OBJECTS s = Salary
     PROPERTIES(s) BACKGROUND background(s) in
-    PROPERTIES(s) READONLY BACKGROUND background(s) nameEmployee, sumSalary, sumBonus, sumFine, sumPay, sumPayUSD, payExtra, sumTransfer BACKGROUND RGB(250,250,210) 
-    PROPERTIES(s) READONLY BACKGROUND background(s) deltaReal BACKGROUND RGB(255,240,245), isReturn, note1, note2, ktu, payExtraCash, deltaPay, absenceHours
+    PROPERTIES(s) READONLY BACKGROUND background(s) nameEmployee, sumSalary, sumBonus, sumFine, sumPay, sumPayUSD, payExtra, payExtraCash, deltaPay, sumTransfer BACKGROUND RGB(250,250,210) 
+    PROPERTIES(s) READONLY BACKGROUND background(s) deltaReal BACKGROUND RGB(255,240,245), isReturn, note1, note2, ktu, absenceHours
     PROPERTIES(s) READONLY BACKGROUND background(s) numberMonth, nameMonth, year
     PROPERTIES(s) NEWSESSION NEW, EDIT
     ORDERS nameEmployee(s)
@@ -337,7 +372,8 @@ FORM salaries 'Начисление зарплаты'
     OBJECTS t = Transfer LAST 
     PROPERTIES(t) in
     PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, nameOperation, sum, note
-    PROPERTIES(t) NEWSESSION NEW, EDIT
+    PROPERTIES newTransfer(r, s) TOOLBAR DRAW t
+    PROPERTIES(t) NEWSESSION EDIT
     ORDERS year(t), numberMonth(t), date(t), nameEmployee(t)
     
     FILTERGROUP transfer
@@ -381,17 +417,8 @@ WHEN CHANGED(sumTransfer(Salary s)) DO {
     deltaPay(s)  <- sumPay(s) (-) sumTransfer(s) (-) payExtra(s) (-) payExtraCash(s) ;
     deltaReal(s) <- sumPay(s) (-) sumTransfer(s);
 }
-
-WHEN LOCAL FORMS salary CHANGED(payExtra(Salary s)) DO 
+WHEN LOCAL FORMS salary CHANGED(payExtra(Salary s)) OR CHANGED(payExtraCash(s)) DO 
     deltaPay(s)  <- sumPay(s) (-) sumTransfer(s) (-) payExtra(s) (-) payExtraCash(s) ;
-
-WHEN LOCAL FORMS salary CHANGED(payExtraCash(Salary s)) DO
-    payExtra(s) <- sumPay(s) (-) sumTransfer(s) (-) payExtraCash(s) (-) deltaPay(s);
-
-WHEN LOCAL FORMS salary CHANGED(sumPay(Salary s)) DO {
-    deltaPay(s) <- NULL ;
-    payExtra(s) <- sumPay(s) (-) sumTransfer(s) (-) payExtraCash(s);
-}
 
 WHEN LOCAL FORMS salary CHANGED(sumPay(Salary s)) DO 
     deltaReal(s) <- sumPay(s) (-) sumTransfer(s);
@@ -400,17 +427,22 @@ WHEN LOCAL FORMS salary CHANGED(sumPay(Salary s)) DO
 ///// Удаление отмеченных записей
 countInSalary = GROUP SUM 1 IF in(Salary s) AND s IS Salary BY reportingMonth(year(s),month(s));
 
-deleteInSalary 'Удалить отмеченные' (Salary sal)  {
+deleteInSalary 'Удалить' (Salary sal)  {
     NEWSESSION NESTED(in[Salary]) {
         IF countInSalary(reportingMonth(year(sal),month(sal))) THEN {
             ASK 'Вы действительно хотите удалить отмеченные записи за '+ staticCaption(month(sal)) + ' ' + year(sal) + 'г. '+
-                '? \n\n Количество отмеченных записей "Сотрудники" за отчетный месяц: ' + countInSalary(reportingMonth(year(sal),month(sal))) DO {
+                '? \n\n Количество отмеченных записей "Зарплата сотрудника" за отчетный месяц: ' + countInSalary(reportingMonth(year(sal),month(sal))) DO {
                 DELETE Salary s WHERE s IS Salary AND in(s);
                 APPLY ;
             }
         }
         ELSE {
-            MESSAGE 'Отсутствуют отмеченные записи.';
+            ASK 'Вы действительно хотите удалить текущую запись "Зарплата сотрудника"  ?' DO {
+                NEWSESSION NESTED LOCAL {
+                    DELETE sal;
+                    APPLY ;
+                }
+            }
         }
     }
 } IMAGE 'delete.png';
@@ -421,10 +453,10 @@ EXTEND FORM salaries
 
 countInTransfer = GROUP SUM 1 IF in(Transfer t) AND t IS Transfer;
 
-deleteInTransfer 'Удалить отмеченные' (Transfer tr)  {
+deleteInTransfer 'Удалить' (Transfer tr)  {
     IF countInTransfer() THEN {
         ASK 'Вы действительно хотите удалить отмеченные записи ?\n\n Будут удалены ВСЕ отмеченные записи независимо от отчетного месяца и отборов !'+
-            ' \n\n Количество отмеченных записей "Начисления": ' + countInTransfer()  DO {
+            ' \n\n Количество отмеченных записей "Выплаты": ' + countInTransfer()  DO {
             NEWSESSION NESTED LOCAL {
                 DELETE Transfer t WHERE t IS Transfer AND in(t);
                 APPLY ;
@@ -432,7 +464,12 @@ deleteInTransfer 'Удалить отмеченные' (Transfer tr)  {
         }
     }
     ELSE {
-        MESSAGE 'Отсутствуют отмеченные записи.';
+        ASK 'Вы действительно хотите удалить текущую запись "Выплата"  ?' DO {
+            NEWSESSION NESTED LOCAL {
+                DELETE tr;
+                APPLY ;
+            }
+        }
     }
 } IMAGE 'delete.png';
 
@@ -440,8 +477,74 @@ EXTEND FORM salaries
     PROPERTIES(t) deleteInTransfer TOOLBAR
 ;
 
+///// Сформировать выплаты по текущему месяцу (безнал)
+generateTransfersCurrentMonth 'Сформ-ть выплаты' (ReportingMonth r) {
+
+    LOCAL countTransfer = INTEGER();
+    countTransfer() <- OVERRIDE (GROUP SUM 1 IF month(Transfer t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗЗ', '2')), 0;
+    LOCAL countTransferNew = INTEGER();
+    countTransferNew() <- OVERRIDE (GROUP SUM 1 IF month(Salary s) == month(r) AND year(s) == year(r) AND payExtra(s) AND payExtra(s) != 0.0), 0;
+    
+    ASK 'Количество выплат планируется за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countTransferNew() + '\n\n' +
+        'Количество уже существующих строк с выплатами за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countTransfer() + '\n' +
+        (IF countTransfer() > 0 THEN '  Эти строки будут удалены !!!\n\n' ELSE '\n') +
+        'Вы действительно хотите сформировать строки с выплатами ?' DO {
+
+        IF countTransfer() THEN {
+            DELETE Transfer t WHERE t IS Transfer AND month(t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗЗ', '2');
+        }
+        FOR month(Salary s) == month(r) AND year(s) == year(r) AND payExtra(s) AND payExtra(s) != 0.0 DO NEW t = Transfer {
+            date(t) <- currentDate();
+            month(t) <- month(r);
+            year(t) <- year(r);
+            operation(t) <- uniqueCode('ЗЗ', '2');
+            employee(t) <- employee(s) ;
+            sum(t) <- payExtra(s);
+            note(t) <- 'Сформировано программно';
+        }
+        APPLY ;
+    }
+}
+
+EXTEND FORM salaries
+    PROPERTIES(r) READONLYIF closed(r) generateTransfersCurrentMonth TOOLBAR
+;
+
+///// Сформировать выплаты по текущему месяцу (нал)
+generateTransfersCurrentMonthCash 'Сформ-ть выплаты (нал)' (ReportingMonth r) {
+
+    LOCAL countTransfer = INTEGER();
+    countTransfer() <- OVERRIDE (GROUP SUM 1 IF month(Transfer t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗН', '2')), 0;
+    LOCAL countTransferNew = INTEGER();
+    countTransferNew() <- OVERRIDE (GROUP SUM 1 IF month(Salary s) == month(r) AND year(s) == year(r) AND payExtraCash(s) AND payExtraCash(s) != 0.0), 0;
+    
+    ASK 'Количество выплат (наличными) планируется за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countTransferNew() + '\n\n' +
+        'Количество уже существующих строк с выплатами за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countTransfer() + '\n' +
+        (IF countTransfer() > 0 THEN '  Эти строки будут удалены !!!\n\n' ELSE '\n') +
+        'Вы действительно хотите сформировать строки с выплатами ?' DO {
+        
+        IF countTransfer() THEN {
+            DELETE Transfer t WHERE t IS Transfer AND month(t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗН', '2');
+        }
+        FOR month(Salary s) == month(r) AND year(s) == year(r) AND payExtraCash(s) AND payExtraCash(s) != 0.0 DO NEW t = Transfer {
+            date(t) <- currentDate();
+            month(t) <- month(r);
+            year(t) <- year(r);
+            operation(t) <- uniqueCode('ЗН', '2');
+            employee(t) <- employee(s) ;
+            sum(t) <- payExtraCash(s);
+            note(t) <- 'Сформировано программно';
+        }
+        APPLY ;
+    }
+}
+
+EXTEND FORM salaries
+    PROPERTIES(r) READONLYIF closed(r) generateTransfersCurrentMonthCash TOOLBAR
+;
+
 ///// Перенести отклонение на след.месяц
-transferDeviaNextMonth 'Перенести отклонение на след.месяц' (ReportingMonth r) {
+transferDeviaNextMonth 'Отклонение на след.месяц' (ReportingMonth r) {
     
     LOCAL lYear = INTEGER ();
     LOCAL lMonth = Month ();
@@ -465,9 +568,9 @@ transferDeviaNextMonth 'Перенести отклонение на след.м
     countDeltaReal() <- OVERRIDE (GROUP SUM 1 IF month(Salary s) == month(r) AND year(s) == year(r) AND deltaReal(s) AND deltaReal(s) != 0.0), 0;
     
     ASK 'Количество отклонений за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countDeltaReal() + '\n\n' +
-        'Количество уже существующих начислений с отклонениями за ' + staticCaption(lMonth()) + ' ' + lYear() + 'г. :  ' + countTransfer() + '\n' +
-        (IF countTransfer() > 0 THEN '  Эти начисления будут удалены !!!\n\n' ELSE '\n') +
-            'Вы действительно хотите сформировать начисления с отклонениями ?' DO {
+        'Количество уже существующих строк с отклонениями за ' + staticCaption(lMonth()) + ' ' + lYear() + 'г. :  ' + countTransfer() + '\n' +
+        (IF countTransfer() > 0 THEN '  Эти строки будут удалены !!!\n\n' ELSE '\n') +
+            'Вы действительно хотите сформировать строки с отклонениями ?' DO {
         
         IF countTransfer() THEN {
             DELETE Transfer t WHERE t IS Transfer AND month(t) == lMonth() AND year(t) == lYear() AND operation(t) == uniqueCode('ПЗ', '2');
@@ -490,8 +593,8 @@ EXTEND FORM salaries
 
 employee = GROUP MAX Employee e BY personalAccount(e);
 
-///// Импорт начислений из XLS-файла
-importTransfers 'Импорт начислений'(){
+///// Импорт выплат из XLS-файла
+importTransfers 'Импорт выплат'(){
     NEWSESSION {
         LOCAL columnB = STRING(INTEGER);
         LOCAL account = STRING[28] (INTEGER);
@@ -499,6 +602,8 @@ importTransfers 'Импорт начислений'(){
         LOCAL fio = STRING(INTEGER);
         
         LOCAL operation = STRING[2]();
+        LOCAL isFinalPayment = BOOLEAN();       // признак окончательного расчета из бухгалтерии
+        LOCAL isNewTransfer = BOOLEAN();        // признак необходимости записи выплат
         LOCAL strmes  = STRING[7]();
         LOCAL nummes  = INTEGER();
         LOCAL numyear = INTEGER();
@@ -513,46 +618,50 @@ importTransfers 'Импорт начислений'(){
         
         INPUT f = EXCELFILE DO {
             IMPORT XLS NOHEADER FROM f TO columnB = B, account = D, sum = G, fio = E ;
-            
+
             /// определение отчетного месяца
             cstr() <- columnB(14);
             IF NOT (strpos(cstr(), '-') > 0) THEN {
                 MESSAGE 'Не определен отчетный месяц и операция (строка 19), отсутствует символ - ';
                 RETURN ;
             }
-            strmes() <- trim(substr(cstr(),1,strpos(cstr(),'-')-1));
-            IF NOT (strpos(strmes(),'.') > 0) THEN {
+            strmes() <- trim(substr(cstr(), 1, strpos(cstr(), '-') - 1));
+            IF NOT (strpos(strmes(), '.') > 0) THEN {
                 MESSAGE 'Не определен отчетный месяц (строка 19), отсутствует символ . между месяцем и годом  ' + strmes();
                 RETURN ;
             }
-            nummes() <- toInteger(trim(substr(strmes(),1,strpos(strmes(),'.')-1)));
-            IF NOT (nummes()>0 AND nummes()<13) THEN {
+            nummes() <- toInteger(trim(substr(strmes(), 1, strpos(strmes(), '.') - 1)));
+            IF NOT (nummes() > 0 AND nummes() < 13) THEN {
                 MESSAGE 'Не определен отчетный месяц (строка 19) ' + strmes();
                 RETURN ;
             }
-            numyear() <- toInteger(trim(substrFrom(strmes(),strpos(strmes(),'.')+1)));
+            numyear() <- toInteger(trim(substrFrom(strmes(), strpos(strmes(), '.') + 1)));
             IF numyear() < 100 AND numyear() > 23 THEN numyear() <- numyear() (+) 2000;
-            IF NOT (numyear()>2023 AND numyear()<2100) THEN {
+            IF NOT (numyear() > 2023 AND numyear() < 2100) THEN {
                 MESSAGE 'Не определен отчетный год (строка 19) ' + strmes();
                 RETURN ;
             }
-            IF NOT reportingMonth(numyear(),month(nummes())) THEN {
+            IF NOT reportingMonth(numyear(), month(nummes())) THEN {
                 MESSAGE 'Не введён отчётный месяц: ' + staticCaption(month(nummes())) + ' ' + numyear() + 'г.';
                 RETURN ;
             }
-            ASK 'Отчетный месяц для начисления : ' + staticCaption(month(nummes())) + ' ' + numyear() + 'г.' +
-                    '\n\n Продолжить начисление ?' DO {
+            ASK 'Отчетный месяц для выплат из принимаемого файла: ' + staticCaption(month(nummes())) + ' ' + numyear() + 'г.' +
+                '\n\n Продолжить создание выплат ?' DO {
             }
             ELSE RETURN ;
-            
+
             /// определение операции
-            operation() <- trim(substrFrom(cstr(),strpos(cstr(),'-')+1));
-            IF (NOT length(operation())==2) OR NOT uniqueCode(operation(),'2') THEN {
+            operation() <- trim(substrFrom(cstr(), strpos(cstr(), '-') + 1));
+            IF (NOT length(operation()) == 2) OR NOT uniqueCode(operation(), '2') THEN {
                 MESSAGE 'Не определена операция по коду ' + operation();
                 RETURN ;
             }
+            isFinalPayment() <- NULL;
+            IF operation()=='ЗЗ' THEN {
+                isFinalPayment() <- TRUE;
+            }    
             
-            /// определение номера и даты документа начисления
+            /// определение номера и даты документа выплаты
             cstr() <- columnB(12);
             IF NOT (strpos(cstr(), '№') > 0) THEN {
                 MESSAGE 'Не определен номер документа (строка 17), отсутствует символ № ';
@@ -590,38 +699,73 @@ importTransfers 'Импорт начислений'(){
                 MESSAGE 'Не определена дата документа (строка 17):  '+cstr();
                 RETURN ;
             }
-            IF transfer(cdok(),ddok(),uniqueCode(operation(),'2')) THEN {
-                ASK 'Документ с номером '+cdok()+' от '+toDateDDMMYYYY(ddok())+' уже существует в журнале начислений.\n\n  Прервать начисление ? \n\n'+
-                'В случае ответа <Нет> старый документ будет УДАЛЁН и примется новый документ !' DO {
-                    RETURN ;
-                }
-                DELETE Transfer t WHERE t IS Transfer AND number(t)=cdok() AND date(t)=ddok() AND operation(t)=uniqueCode(operation(),'2');
-            } 
-            ///
             
+            /// Проверка по сотрудникам
             cstr() <- '';
             FOR account(INTEGER i) AND NOT employee(account(i)) AND sum(i) > 0 AND i > 15 ORDER i DO {
                 cstr() <- cstr() + columnB(i)+'  '+account(i)+'  '+fio(i)+'\n' ;
             }
             IF length(cstr()) > 1 THEN {
                 cstr() <- 'Строки, по которым по р/с не удалось определить сотрудника:\n' + cstr();
-                ASK cstr()+'\n  Прервать начисление ?'  DO {
+                ASK cstr()+'\n  Прервать создание выплат ?'  DO {
                     RETURN ;
                 }
             }
-            FOR account(INTEGER i) AND employee(account(i)) AND sum(i) > 0 AND i > 15 ORDER i NEW t = Transfer DO {
-                number(t) <- cdok();
-                date(t) <- ddok();
-                employee(t) <- employee(account(i));
-                sum(t) <- sum(i);
-                month(t) <- month(nummes());
-                year(t) <- numyear();
-                operation(t) <- uniqueCode(operation(), '2');
-                qcount() <- qcount() + 1;
-                qsum() <- qsum() + sum(i);
+            ///
+            
+            isNewTransfer() <- NULL;
+            IF NOT isFinalPayment() THEN {
+                IF transfer(cdok(), ddok(), uniqueCode(operation(), '2')) THEN {
+                    ASK 'Документ с номером ' + cdok() + ' от ' + toDateDDMMYYYY(ddok()) + ' уже существует в журнале выплат.\n\n  Прервать создание выплат ? \n\n' +
+                        'В случае ответа <Нет> старый документ будет УДАЛЁН и примется новый документ !' DO {
+                        RETURN ;
+                    }
+                    DELETE Transfer t WHERE t IS Transfer AND number(t) = cdok() AND date(t) = ddok() AND operation(t) = uniqueCode(operation(), '2');
+                    isNewTransfer() <- TRUE;
+                }
+            }
+            ELSE {
+                LOCAL qcountold = INTEGER();
+                LOCAL qsumold = NUMERIC[14,2]();
+                LOCAL qcountnew = INTEGER();
+                LOCAL qsumnew = NUMERIC[14,2]();
+                
+                qcountold() <- GROUP SUM 1 IF month(Transfer t)==month(nummes()) AND year(t)==numyear() AND operation(t) = uniqueCode(operation(), '2');
+                qsumold() <- GROUP SUM sum(Transfer t) IF month(t)==month(nummes()) AND year(t)==numyear() AND operation(t) = uniqueCode(operation(), '2');
+                qcountnew() <- 0;
+                qsumnew() <- 0;
+                FOR account(INTEGER i) AND employee(account(i)) AND sum(i) > 0 AND i > 15 ORDER i DO {
+                    qcountnew() <- qcountnew() + 1;
+                    qsumnew() <- qsumnew() (+) sum(i);
+                }
+                ASK 'В журнале выплат уже существуют записи с окончательным расчетом за ' + staticCaption(month(nummes())) + ' ' + numyear()+'г.'+
+                    'Их количество: ' + qcountold() + ' на сумму: '+qsumold()+
+                    '\nВ принимаемом файле количество строк: ' + qcountnew() + ' на сумму: '+qsumnew()+   
+                    '\n\n  Прервать создание выплат ? \n\n'+
+                    'В случае ответа <Нет> старые записи будут УДАЛЕНЫ и примутся новые выплаты из файла !' DO {
+                    isNewTransfer() <- NULL;
+                }
+                ELSE {
+                    isNewTransfer() <- TRUE;
+                    DELETE Transfer t WHERE t IS Transfer AND month(t)==month(nummes()) AND year(t)==numyear() AND operation(t) = uniqueCode(operation(), '2');
+                }
+            }
+            ///
+            IF isNewTransfer() THEN {
+                FOR account(INTEGER i) AND employee(account(i)) AND sum(i) > 0 AND i > 15 ORDER i NEW t = Transfer DO {
+                    number(t) <- cdok();
+                    date(t) <- ddok();
+                    employee(t) <- employee(account(i));
+                    sum(t) <- sum(i);
+                    month(t) <- month(nummes());
+                    year(t) <- numyear();
+                    operation(t) <- uniqueCode(operation(), '2');
+                    qcount() <- qcount() + 1;
+                    qsum() <- qsum() + sum(i);
+                }
             }
         }
-        MESSAGE 'Добавлено начислений: '+qcount()+'\n\nИтоговая сумма: '+qsum();
+        MESSAGE 'Добавлено выплат: '+qcount()+'\n\nИтоговая сумма: '+qsum();
         APPLY;
     }
 }
