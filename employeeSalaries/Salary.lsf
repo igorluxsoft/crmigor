@@ -494,7 +494,7 @@ generateTransfersCurrentMonth 'Сформ-ть выплаты' (ReportingMonth r
             DELETE Transfer t WHERE t IS Transfer AND month(t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗЗ', '2');
         }
         FOR month(Salary s) == month(r) AND year(s) == year(r) AND payExtra(s) AND payExtra(s) != 0.0 DO NEW t = Transfer {
-            date(t) <- currentDate();
+            date(t) <- lastDayOfMonth(toDateFormat('01' + lpad(TEXT (number(month(r))), 2, '0') + year(r), 'DDMMYYYY'));
             month(t) <- month(r);
             year(t) <- year(r);
             operation(t) <- uniqueCode('ЗЗ', '2');
@@ -527,7 +527,7 @@ generateTransfersCurrentMonthCash 'Сформ-ть выплаты (нал)' (Rep
             DELETE Transfer t WHERE t IS Transfer AND month(t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗН', '2');
         }
         FOR month(Salary s) == month(r) AND year(s) == year(r) AND payExtraCash(s) AND payExtraCash(s) != 0.0 DO NEW t = Transfer {
-            date(t) <- currentDate();
+            date(t) <- lastDayOfMonth(toDateFormat('01' + lpad(TEXT (number(month(r))), 2, '0') + year(r), 'DDMMYYYY'));
             month(t) <- month(r);
             year(t) <- year(r);
             operation(t) <- uniqueCode('ЗН', '2');
