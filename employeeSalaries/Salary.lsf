@@ -19,6 +19,10 @@ reportingMonth = GROUP AGGR ReportingMonth r BY year(r), month(r);
 maxYearReportingMonth = GROUP MAX year(ReportingMonth r);
 maxMonthReportingMonth = month(GROUP MAX number(month(ReportingMonth r)) IF year(r)=maxYearReportingMonth()) ;
 
+// Первый не закрытый отчетный месяц
+minYearNoClosed = GROUP MIN year(ReportingMonth r) IF NOT closed(r);
+minMonthNoClosed = month(GROUP MIN number(month(ReportingMonth r)) IF NOT closed(r) AND year(r)=minYearNoClosed());
+minReportingMonthNoClosed = reportingMonth(minYearNoClosed(),minMonthNoClosed());
 
 CLASS Transfer 'Выплата';
 in 'Отм.' = DATA LOCAL NESTED BOOLEAN (Transfer);
@@ -349,7 +353,7 @@ newTransfer 'Добавить' (ReportingMonth r, Salary s) {
 } IMAGE 'add.png';
 
 FORM salaries 'Начисление зарплаты'
-    OBJECTS r = ReportingMonth LAST 
+    OBJECTS r = ReportingMonth
     PROPERTIES(r) READONLY BACKGROUND background(r) nameMonth, year, curRate, sumBonus, closed, note
     PROPERTIES(r) addAllSalaries
     PROPERTIES NEWSESSION newReportingMonth() DRAW r TOOLBAR
@@ -380,6 +384,9 @@ FORM salaries 'Начисление зарплаты'
         FILTER 'По сотруднику за месяц' employee(t)==employee(s) AND year(t)==year(s) AND month(t)==month(s) DEFAULT 
         FILTER 'По сотруднику' employee(t)==employee(s)
         FILTER 'За месяц' year(t)==year(r) AND month(t)==month(r)
+    EVENTS ON INIT {
+        SEEK salaries.r=minReportingMonthNoClosed();
+    }
 ;
 
 DESIGN salaries {
@@ -721,8 +728,8 @@ importTransfers 'Импорт выплат'(){
                         RETURN ;
                     }
                     DELETE Transfer t WHERE t IS Transfer AND number(t) = cdok() AND date(t) = ddok() AND operation(t) = uniqueCode(operation(), '2');
-                    isNewTransfer() <- TRUE;
                 }
+                isNewTransfer() <- TRUE;
             }
             ELSE {
                 LOCAL qcountold = INTEGER();
