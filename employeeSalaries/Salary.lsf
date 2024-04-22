@@ -391,9 +391,10 @@ FORM salaries 'Начисление зарплаты'
 
 DESIGN salaries {
     MOVE BOX(r) {
-        GRID(r) {height=97;} 
+        caption='Отчетный месяц: '+staticCaption(minMonthNoClosed())+' '+minYearNoClosed()+'г. ';
+//        GRID(r) {height=97;} 
         fill=1;
-        height=137;
+//        height=137;
     }
     MOVE BOX(s) {fill=10;}
     MOVE BOX(t) {fill=1;}
