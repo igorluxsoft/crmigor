@@ -665,7 +665,7 @@ importTransfers 'Импорт выплат'(){
             isFinalPayment() <- NULL;
             IF operation()=='ЗЗ' THEN {
                 isFinalPayment() <- TRUE;
-            }    
+            }
             
             /// определение номера и даты документа выплаты
             cstr() <- columnB(12);
@@ -745,7 +745,7 @@ importTransfers 'Импорт выплат'(){
                     qsumnew() <- qsumnew() (+) sum(i);
                 }
                 ASK 'В журнале выплат уже существуют записи с окончательным расчетом за ' + staticCaption(month(nummes())) + ' ' + numyear()+'г.'+
-                    'Их количество: ' + qcountold() + ' на сумму: '+qsumold()+
+                    'Их количество: ' + (OVERRIDE qcountold(),0) + ' на сумму: ' + (OVERRIDE qsumold(),0) +
                     '\nВ принимаемом файле количество строк: ' + qcountnew() + ' на сумму: '+qsumnew()+   
                     '\n\n  Прервать создание выплат ? \n\n'+
                     'В случае ответа <Нет> старые записи будут УДАЛЕНЫ и примутся новые выплаты из файла !' DO {
