@@ -744,8 +744,8 @@ importTransfers 'Импорт выплат'(){
                     qcountnew() <- qcountnew() + 1;
                     qsumnew() <- qsumnew() (+) sum(i);
                 }
-                ASK 'В журнале выплат уже существуют записи с окончательным расчетом за ' + staticCaption(month(nummes())) + ' ' + numyear()+'г.'+
-                    'Их количество: ' + (OVERRIDE qcountold(),0) + ' на сумму: ' + (OVERRIDE qsumold(),0) +
+                ASK 'Количество записей в журнале выплат с окончательным расчетом за ' + staticCaption(month(nummes())) + ' ' + numyear()+'г. : '+
+                    (OVERRIDE qcountold(),0) + ' на сумму: ' + (OVERRIDE qsumold(),0) +
                     '\nВ принимаемом файле количество строк: ' + qcountnew() + ' на сумму: '+qsumnew()+   
                     '\n\n  Прервать создание выплат ? \n\n'+
                     'В случае ответа <Нет> старые записи будут УДАЛЕНЫ и примутся новые выплаты из файла !' DO {
@@ -808,8 +808,20 @@ FORM salariesEmployee 'Информация по сотруднику'
     
     OBJECTS s = Salary LAST 
     PROPERTIES(s) READONLY nameMonth, year, sumSalary, sumBonus, sumFine, sumPay, sumTransfer, deltaReal
+    PROPERTIES(s) READONLY DRAW e note1, note2
     FILTERS employee(s)=e
 ;
+
+DESIGN salariesEmployee {
+    NEW cnt1 {
+        horizontal = FALSE ;
+        MOVE PROPERTY(fullName(e));
+        MOVE PROPERTY(note1(s)) {charWidth=130;}
+        MOVE PROPERTY(note2(s)) {charWidth=130;}
+    }
+    MOVE BOX(s);
+    MOVE TOOLBARBOX;
+}
 
 showSalariesEmployee 'По сотруднику' (Salary s){
     SHOW salariesEmployee OBJECTS e = employee(s);
