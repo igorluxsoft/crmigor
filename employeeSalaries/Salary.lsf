@@ -91,6 +91,29 @@ countSalaryReportingMonth(ReportingMonth r) = GROUP SUM 1 IF year(Salary s)==yea
 absenceHours 'Личное за месяц' (Salary s) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(s) AND extractYear(d)=year(s) AND extractMonth(d)=month(s) AND 
     nameReason(a)='Личное';
 
+/// Вид платежа
+CLASS TypePayment 'Вид платежа';
+TABLE typePayment(TypePayment);
+
+name 'Наименование' = DATA STRING[20](TypePayment);
+
+FORM typePayments 'Виды платежа'
+    OBJECTS t = TypePayment
+    PROPERTIES(t) READONLY name
+    PROPERTIES (t) NEWSESSION NEW, EDIT, DELETE
+    
+    LIST TypePayment OBJECT t
+;
+
+FORM typePayment 'Вид платежа'
+    OBJECTS t = TypePayment PANEL
+    PROPERTIES(t) name
+    EDIT TypePayment OBJECT t
+;
+
+typePayment 'Вид платежа' = DATA TypePayment (Transfer);
+nameTypePayment 'Вид платежа' (Transfer t) = name(typePayment(t));
+
 /// Исп. для ввода новой записи (корр-ка всех полей)
 FORM reportingMonth 'Отчетный месяц'
     OBJECTS r = ReportingMonth PANEL
@@ -278,7 +301,7 @@ changeMoveMoneyOprerationSalary(Transfer t) {
 
 FORM transfer 'Выплата'
     OBJECTS t = Transfer PANEL
-    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), sum, note
+    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), nameTypePayment, sum, note
     EDIT Transfer OBJECT t
     EVENTS ON APPLY BEFORE {
         IF date(t) > lastDayOfMonth(sumMonth(currentDate(), 1)) OR date(t) < firstDayOfMonth(sumMonth(currentDate(), -1)) THEN {
@@ -299,6 +322,7 @@ DESIGN transfer {
             MOVE PROPERTY (year(t));
             MOVE PROPERTY (nameEmployee(t));
             MOVE PROPERTY (nameOperation(t));
+            MOVE PROPERTY (nameTypePayment(t));
             MOVE PROPERTY (sum(t));
             MOVE PROPERTY (note(t));
         }
@@ -375,7 +399,7 @@ FORM salaries 'Начисление зарплаты'
     
     OBJECTS t = Transfer LAST 
     PROPERTIES(t) in
-    PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, nameOperation, sum, note
+    PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, nameOperation, sum, note, nameTypePayment
     PROPERTIES newTransfer(r, s) TOOLBAR DRAW t
     PROPERTIES(t) NEWSESSION EDIT
     ORDERS year(t), numberMonth(t), date(t), nameEmployee(t)
@@ -830,4 +854,5 @@ EXTEND FORM salaries
     PROPERTIES(s) showSalariesEmployee TOOLBAR 
 ;
 /////
+
 
