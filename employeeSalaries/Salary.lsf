@@ -301,7 +301,7 @@ changeMoveMoneyOprerationSalary(Transfer t) {
 
 FORM transfer 'Выплата'
     OBJECTS t = Transfer PANEL
-    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), nameTypePayment, sum, note
+    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), sum, note, nameTypePayment
     EDIT Transfer OBJECT t
     EVENTS ON APPLY BEFORE {
         IF date(t) > lastDayOfMonth(sumMonth(currentDate(), 1)) OR date(t) < firstDayOfMonth(sumMonth(currentDate(), -1)) THEN {
@@ -322,9 +322,9 @@ DESIGN transfer {
             MOVE PROPERTY (year(t));
             MOVE PROPERTY (nameEmployee(t));
             MOVE PROPERTY (nameOperation(t));
-            MOVE PROPERTY (nameTypePayment(t));
             MOVE PROPERTY (sum(t));
             MOVE PROPERTY (note(t));
+            MOVE PROPERTY (nameTypePayment(t));
         }
     }
 }
