@@ -256,8 +256,8 @@ DESIGN salary {
         }
         NEW cnt4 {
             caption = 'Примечания';
-            MOVE PROPERTY (note1(s)) {charWidth=120; fontSize = 16;}
-            MOVE PROPERTY (note2(s)) {charWidth=120; fontSize = 16;}
+            MOVE PROPERTY (note1(s)) {charWidth=140; fontSize = 16;}
+            MOVE PROPERTY (note2(s)) {charWidth=140; fontSize = 16;}
         }
         NEW cnt5 {
             caption = 'К выплате';
@@ -291,7 +291,7 @@ DESIGN salary {
 FORM listMoveMoneyOprerationSalary 'Справочник операций'
     OBJECTS o = MoveMoneyOpreration
     PROPERTIES (o) READONLY code, name
-    FILTERS sign(o)='2' AND atr(o)='1'
+    FILTERS atr(o)='1'
 ;
 
 changeMoveMoneyOprerationSalary(Transfer t) {
