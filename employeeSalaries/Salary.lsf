@@ -350,6 +350,8 @@ addAllSalaries 'Добавить сотрудников' (ReportingMonth r) {
         year(s) <- year(r);
         employee(s) <- e;
         sumSalary(s) <- sumSalary(salary(e,maxYear(),maxMonth()));
+        note1(s) <- note1(salary(e,maxYear(),maxMonth()));
+        note2(s) <- note2(salary(e,maxYear(),maxMonth()));
         sumPay(s) <- sumSalary(s);
         payExtra(s) <- sumPay(s) (-) sumTransfer(e,month(r),year(r));
         deltaReal(s) <- sumPay(s) (-) sumTransfer(e,month(r),year(r));
