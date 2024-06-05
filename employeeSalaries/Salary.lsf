@@ -450,8 +450,10 @@ WHEN CHANGED(sumTransfer(Salary s)) DO {
 WHEN LOCAL FORMS salary CHANGED(payExtra(Salary s)) OR CHANGED(payExtraCash(s)) DO 
     deltaPay(s)  <- sumPay(s) (-) sumTransfer(s) (-) payExtra(s) (-) payExtraCash(s) ;
 
-WHEN LOCAL FORMS salary CHANGED(sumPay(Salary s)) DO 
+WHEN LOCAL FORMS salary CHANGED(sumPay(Salary s)) DO {
+    deltaPay(s)  <- sumPay(s) (-) sumTransfer(s) (-) payExtra(s) (-) payExtraCash(s) ;
     deltaReal(s) <- sumPay(s) (-) sumTransfer(s);
+}
 
 
 ///// Удаление отмеченных записей
@@ -831,7 +833,7 @@ FORM salariesEmployee 'Информация по сотруднику'
     PROPERTIES(e) fullName SELECTOR 
     
     OBJECTS s = Salary LAST 
-    PROPERTIES(s) READONLY nameMonth, year, sumSalary, sumBonus, sumFine, sumPay, sumTransfer, deltaReal
+    PROPERTIES(s) READONLY nameMonth, year, sumSalary, sumBonus, sumBonus1, sumBonus2, sumBonus3, sumBonusQuarter, sumFine, sumFine1, sumFine2, sumFine3, sumPay, sumTransfer, deltaReal
     PROPERTIES(s) READONLY DRAW e note1, note2
     FILTERS employee(s)=e
 ;
