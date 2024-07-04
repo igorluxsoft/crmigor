@@ -208,6 +208,12 @@ setPayExtraCash '+ Откл.' (Salary s) {
     }
 }
 
+// для подстановки месяца и года из записи "Отчетный месяц" при добавлении новой записи "Зарплата сотрудника"
+selectReportingMonth = DATA LOCAL NESTED Month();
+selectReportingYear  = DATA LOCAL NESTED INTEGER ();
+// для установки указателя текущей записи в таблице "Зарплата сотрудника" на том же сотруднике при перемещении по таблице "Отчетный месяц"
+selectEmployee = DATA LOCAL NESTED STRING[150];
+
 FORM salary 'Начисление зарплаты'
     OBJECTS s = Salary PANEL 
     PROPERTIES(s) nameEmployee, nameMonth, year, sumSalary, sumBonus1, sumBonus2, sumBonus3, sumFine1, sumFine2, sumFine3, 
@@ -218,8 +224,8 @@ FORM salary 'Начисление зарплаты'
     EDIT Salary OBJECT s
     
     EVENTS ON INIT {
-        IF NOT month(s) THEN month(s) <- extractMonth(currentDate());
-        IF NOT year(s)  THEN year(s) <- extractYear(currentDate());
+        month(s) <- selectReportingMonth();
+        year(s) <- selectReportingYear();
     }
 ;
 
@@ -412,6 +418,14 @@ FORM salaries 'Начисление зарплаты'
         FILTER 'За месяц' year(t)==year(r) AND month(t)==month(r)
     EVENTS ON INIT {
         SEEK salaries.r=minReportingMonthNoClosed();
+    }
+    EVENTS ON CHANGE r {
+        selectReportingMonth() <- month(r);
+        selectReportingYear() <- year(r);
+        SEEK salaries.s = GROUP MAX Salary sal IF nameEmployee(sal)=selectEmployee() AND month(sal)==month(r) AND year(sal)==year(r); 
+    }
+    EVENTS ON CHANGE s {
+        selectEmployee() <- nameEmployee(s);
     }
 ;
 
