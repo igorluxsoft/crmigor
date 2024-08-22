@@ -200,11 +200,19 @@ setPayExtra '+ Откл.' (Salary s) {
         payExtra(s) <- payExtra(s) (+) deltaPay(s);
         deltaPay(s) <- NULL;
     }
+    ELSE {
+        payExtra(s) <- NULL;
+        deltaPay(s) <- deltaPay(s) (-) payExtra(s);
+    }
 }
 setPayExtraCash '+ Откл.' (Salary s) {
     IF NOT payExtraCash(s) (+) deltaPay(s) < 0.0 THEN {
         payExtraCash(s) <- payExtraCash(s) (+) deltaPay(s);
         deltaPay(s) <- NULL;
+    }
+    ELSE {
+        payExtraCash(s) <- NULL;
+        deltaPay(s) <- deltaPay(s) (-) payExtraCash(s);
     }
 }
 
@@ -397,7 +405,7 @@ FORM salaries 'Начисление зарплаты'
     PROPERTIES(s) READONLY BACKGROUND background(s) nameEmployee, sumSalary, sumBonus, sumFine, sumPay, sumPayUSD, payExtra, payExtraCash, deltaPay, sumTransfer BACKGROUND RGB(250,250,210) 
     PROPERTIES(s) READONLY BACKGROUND background(s) deltaReal BACKGROUND RGB(255,240,245), isReturn, note1, note2, ktu, absenceHours
     PROPERTIES(s) READONLY BACKGROUND background(s) numberMonth, nameMonth, year
-    PROPERTIES(s) NEWSESSION NEW, EDIT
+    PROPERTIES(s) READONLYIF closed(r) NEWSESSION NEW, EDIT
     ORDERS nameEmployee(s)
     FILTERS month(s)==month(r) AND year(s)==year(r)
     FILTERGROUP salary
@@ -408,7 +416,7 @@ FORM salaries 'Начисление зарплаты'
     OBJECTS t = Transfer LAST 
     PROPERTIES(t) in
     PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, nameOperation, sum, note, nameTypePayment
-    PROPERTIES newTransfer(r, s) TOOLBAR DRAW t
+    PROPERTIES READONLYIF closed(r) newTransfer(r, s) TOOLBAR DRAW t
     PROPERTIES(t) NEWSESSION EDIT
     ORDERS year(t), numberMonth(t), date(t), nameEmployee(t)
     
@@ -496,7 +504,7 @@ deleteInSalary 'Удалить' (Salary sal)  {
 } IMAGE 'delete.png';
 
 EXTEND FORM salaries
-    PROPERTIES(s) deleteInSalary TOOLBAR 
+    PROPERTIES(s) READONLYIF closed(r) deleteInSalary TOOLBAR 
 ;
 
 countInTransfer = GROUP SUM 1 IF in(Transfer t) AND t IS Transfer;
@@ -819,7 +827,7 @@ importTransfers 'Импорт выплат'(){
 }
 
 EXTEND FORM salaries
-    PROPERTIES importTransfers() DRAW t TOOLBAR
+    PROPERTIES READONLYIF closed(r) importTransfers() DRAW t TOOLBAR
 ;
 
 ///// Справка о начислениях в бухгалтерию
