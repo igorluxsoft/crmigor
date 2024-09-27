@@ -1,0 +1,207 @@
+MODULE MoneyAccounting;
+
+REQUIRE MoveMoneyOpreration;
+
+NAMESPACE MoneyAccounting;
+
+CLASS RegisterAccounting 'Регистр учета';
+code 'Код' = DATA STRING[20] (RegisterAccounting) NONULL;
+name 'Название' = DATA STRING[100] (RegisterAccounting) NONULL;
+currency = DATA Currency (RegisterAccounting) NONULL;
+shortNameCurrency 'Валюта' (RegisterAccounting r) = shortName(currency(r));
+
+select 'Отм.' = DATA LOCAL NESTED BOOLEAN (RegisterAccounting);
+countSelectRegisterAccounting = GROUP SUM 1 IF select(RegisterAccounting r);
+
+uniqueCode = GROUP AGGR (RegisterAccounting r) BY code(r);
+
+FORM viewRegisterAccounting 'Регистры учета'
+    OBJECTS r = RegisterAccounting
+    PROPERTIES(r) READONLY code, name, shortNameCurrency
+    PROPERTIES(r) NEWSESSION NEW, EDIT, DELETE
+    ORDERS name(r)
+;
+
+selectAllRegisterAccounting 'Отметить все' () {
+    select(RegisterAccounting r) <- TRUE WHERE r IS RegisterAccounting;
+}
+
+unSelectAllRegisterAccounting 'Сбросить все' () {
+    select(RegisterAccounting r) <- NULL WHERE r IS RegisterAccounting;
+}
+
+FORM listRegisterAccounting 'Регистры учета'
+    OBJECTS r = RegisterAccounting
+    PROPERTIES(r) select
+    PROPERTIES(r) READONLY code, name, shortNameCurrency
+    PROPERTIES selectAllRegisterAccounting() TOOLBAR, unSelectAllRegisterAccounting() TOOLBAR 
+    LIST RegisterAccounting OBJECT r
+    ORDERS name(r)
+;
+
+FORM editRegisterAccounting 'Регистр учета'
+    OBJECTS r = RegisterAccounting PANEL
+    PROPERTIES(r) code, name, shortNameCurrency
+    EDIT RegisterAccounting OBJECT r
+;
+
+
+CLASS MoneyMove 'Движение денег';
+registerAccounting 'Регистр учета' = DATA RegisterAccounting (MoneyMove);
+nameRegisterAccounting 'Регистр учета' = name(registerAccounting(MoneyMove m));
+shortNameCurrency 'Валюта' = shortNameCurrency(registerAccounting(MoneyMove m));
+operation 'Операция' = DATA MoveMoneyOpreration (MoneyMove);
+nameOperation 'Операция' = name(operation(MoneyMove m));
+codeOperation 'Код операции' = code(operation(MoneyMove m));
+date 'Дата' = DATA DATE (MoneyMove);
+summa 'Сумма' = DATA NUMERIC[14,2] (MoneyMove);
+summaUSD 'Сумма, USD' = DATA NUMERIC[14,2] (MoneyMove);
+balance 'Остаток после операции' = DATA NUMERIC[14,2] (MoneyMove);
+customer 'Клиент' = DATA Customer (MoneyMove);
+nameCustomer 'Клиент' (MoneyMove m) = name(customer(m));
+legalEntity 'Организация' = DATA LegalEntity (MoneyMove);
+nameLegalEntity 'Организация'(MoneyMove m) = name(legalEntity(m));
+employee 'Сотрудник' = DATA Employee (MoneyMove) ;
+nameEmployee 'Сотрудник' (MoneyMove m) = fullName(employee(m)) CHARWIDTH 15;
+note 'Примечание' = DATA STRING  (MoneyMove);
+note2 'Примечание-2' = DATA STRING  (MoneyMove);
+dateTimeEntry 'Время создания' = DATA DATETIME (MoneyMove);
+userEntry 'Создан пользователем' = DATA Employee (MoneyMove);
+nameUserEntry 'Создан пользователем' (MoneyMove m) = name(userEntry(m));
+
+FORM editMoneyMove 'Движение денег'
+    OBJECTS m = MoneyMove PANEL
+    PROPERTIES (m) date, nameOperation, nameRegisterAccounting, summa, balance, summaUSD, nameCustomer, nameLegalEntity, nameEmployee, note, note2
+    EDIT MoneyMove OBJECT m
+;
+
+recalculateBalance 'Перерасчет остатков' () {
+    DIALOG listRegisterAccounting OBJECTS r INPUT DO {
+        NEWSESSION {
+            IF NOT countSelectRegisterAccounting() THEN select(r) <- TRUE ;
+            LOCAL bal = NUMERIC[12,2] ();
+            
+            FOR select(RegisterAccounting ra) DO {
+                bal() <- 0.0;
+                FOR registerAccounting(MoneyMove m)==ra ORDER date(m), codeOperation(m) DO {
+                    bal() <- bal() + summa(m);
+                    balance(m) <- bal();
+                }
+                select(ra) <- NULL ;
+            }
+            APPLY;
+        }
+    }
+}
+
+recalculateSummaUSD 'Перерасчет сумм USD' () {
+    DIALOG listRegisterAccounting OBJECTS r INPUT DO {
+        NEWSESSION {
+            IF NOT countSelectRegisterAccounting() THEN select(r) <- TRUE ;
+            // тип обмена - бел. рубль
+            LOCAL tBYN = TypeExchange ();
+            tBYN() <- GROUP MAX (TypeExchange t) IF name(t) = 'НБРБ (BYN)';
+            
+            LOCAL s = NUMERIC[18,6] ();
+            
+            FOR select(RegisterAccounting ra) DO {
+                FOR registerAccounting(MoneyMove m)==ra DO {
+                    IF shortName(currency(ra)) = 'USD' THEN summaUSD(m) <- summa(m);
+                    ELSE {
+                        IF shortName(currency(ra)) = 'BYN' THEN s() <- summa(m);
+                        ELSE s() <- round6(summa(m) * rateOn(tBYN(), currency(ra), date(m))); // переводим в BYN
+                        summaUSD(m) <- round2(s() * rateOn(defaultTypeExchange(), currency(tBYN()), date(m)));
+                    }    
+                }
+                select(ra) <- NULL ;
+            }
+            APPLY;
+        }
+    }
+}
+
+filterMoneyMoveDateFrom 'Дата с' = DATA LOCAL DATE ();
+filterDateFrom (MoneyMove m) = date(m) >= filterMoneyMoveDateFrom() OR (m IS MoneyMove AND NOT filterMoneyMoveDateFrom());
+
+filterMoneyMoveDateTo 'Дата по' = DATA LOCAL DATE ();
+filterDateTo (MoneyMove m) = date(m) <= filterMoneyMoveDateTo() OR (m IS MoneyMove AND NOT filterMoneyMoveDateTo());
+
+filterRegisterAccounting 'Регистр учета' = DATA LOCAL RegisterAccounting ();
+nameFilterRegisterAccounting 'Регистр учета' = name(filterRegisterAccounting()) CHARWIDTH 15;
+filterRegisterAccounting(MoneyMove m) = registerAccounting(m) == filterRegisterAccounting() OR (m IS MoneyMove AND NOT filterRegisterAccounting());
+
+filterOperation 'Регистр учета' = DATA LOCAL MoveMoneyOpreration ();
+nameFilterOperation 'Операцмя' = name(filterOperation()) CHARWIDTH 15;
+filterOperation(MoneyMove m) = operation(m) == filterOperation() OR (m IS MoneyMove AND NOT filterOperation());
+
+filterCustomer 'Клиент' = DATA LOCAL Customer ();
+nameFilterCustomer 'Клиент' = name(filterCustomer()) CHARWIDTH 15;
+filterCustomer(MoneyMove m) = customer(m) == filterCustomer() OR (m IS MoneyMove AND NOT filterCustomer());
+
+filterLegalEntity 'Организация' = DATA LOCAL LegalEntity ();
+nameFilterLegalEntity 'Организация' = name(filterLegalEntity()) CHARWIDTH 15;
+filterLegalEntity(MoneyMove m) = legalEntity(m) == filterLegalEntity() OR (m IS MoneyMove AND NOT filterLegalEntity());
+
+filterEmployee 'Сотрудник' = DATA LOCAL Employee ();
+nameFilterEmployee 'Сотрудник' = name(filterEmployee()) CHARWIDTH 15;
+filterEmployee(MoneyMove m) = employee(m) == filterEmployee() OR (m IS MoneyMove AND NOT filterEmployee());
+
+FORM viewMoneyMove 'Движение денег'
+    PROPERTIES() filterMoneyMoveDateFrom, filterMoneyMoveDateTo, nameFilterRegisterAccounting, nameFilterOperation, nameFilterCustomer, nameFilterLegalEntity, nameFilterEmployee
+    
+    OBJECTS m = MoneyMove LAST 
+    PROPERTIES(m) READONLY date, codeOperation, nameOperation, nameRegisterAccounting, summa, balance, shortNameCurrency, summaUSD,
+                           nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry
+    PROPERTIES(m) NEWSESSION NEW, EDIT, DELETE
+    PROPERTIES recalculateBalance() TOOLBAR DRAW m
+    PROPERTIES recalculateSummaUSD() TOOLBAR DRAW m
+    ORDERS date(m), codeOperation(m)
+    FILTERS filterDateFrom(m),
+        filterDateTo(m),
+        filterRegisterAccounting(m),
+        filterOperation(m),
+        filterCustomer(m),
+        filterLegalEntity(m),
+        filterEmployee(m)
+    
+    OBJECTS mm = MoneyMove PANEL
+        PROPERTIES(mm) READONLY note, note2
+        FILTERS mm=m
+;
+
+DESIGN viewMoneyMove {
+    OBJECTS {
+        NEW cntrz {
+            caption = 'Текущие значения';
+            alignment = STRETCH;
+            MOVE PROPERTY(note(mm));
+            MOVE PROPERTY(note2(mm));
+        }
+        NEW topFilters {
+            caption = 'Фильтры';
+            horizontal = TRUE;
+            alignment = STRETCH;
+            MOVE PROPERTY (filterMoneyMoveDateFrom());
+            MOVE PROPERTY (filterMoneyMoveDateTo());
+            MOVE PROPERTY(nameFilterRegisterAccounting());
+            MOVE PROPERTY (nameFilterOperation());
+            MOVE PROPERTY (nameFilterCustomer());
+            MOVE PROPERTY(nameFilterLegalEntity());
+            MOVE PROPERTY(nameFilterEmployee());
+        }
+        MOVE BOX(m);
+    }
+}
+
+NAVIGATOR {
+    finance {
+        NEW viewRegisterAccounting;
+        NEW viewMoneyMove;
+    }
+}
+
+WHEN SET(MoneyMove m IS MoneyMove) DO {
+    dateTimeEntry(m) <- currentDateTime();
+    userEntry(m) <- currentUser();
+}
+
