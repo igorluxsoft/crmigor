@@ -1,6 +1,6 @@
 MODULE Salary;
 
-REQUIRE EmployeeNew, MoveMoneyOpreration, EmployeeAbsence;
+REQUIRE EmployeeNew, MoveMoneyOpreration, EmployeeAbsence, MoneyAccounting;
 
 NAMESPACE Salary;
 
@@ -40,6 +40,10 @@ nameEmployee 'Сотрудник' (Transfer t) = fullName(employee(t));
 
 sum 'Сумма' = DATA NUMERIC[12,2] (Transfer);
 note 'Примечание' = DATA STRING (Transfer);
+
+registerAccounting 'Регистр учета' = DATA RegisterAccounting (Transfer) ;
+nameRegisterAccounting 'Регистр учета' (Transfer t) = name(registerAccounting(t));
+codeRegisterAccounting 'Регистр учета' (Transfer t) = code(registerAccounting(t));
 
 transfer = GROUP MAX Transfer t BY number(t), date(t), operation(t);
 
@@ -315,7 +319,7 @@ changeMoveMoneyOprerationSalary(Transfer t) {
 
 FORM transfer 'Выплата'
     OBJECTS t = Transfer PANEL
-    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), sum, note, nameTypePayment
+    PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), sum, note, nameTypePayment, codeRegisterAccounting
     EDIT Transfer OBJECT t
     EVENTS ON APPLY BEFORE {
         IF date(t) > lastDayOfMonth(sumMonth(currentDate(), 1)) OR date(t) < firstDayOfMonth(sumMonth(currentDate(), -1)) THEN {
@@ -339,6 +343,7 @@ DESIGN transfer {
             MOVE PROPERTY (sum(t));
             MOVE PROPERTY (note(t));
             MOVE PROPERTY (nameTypePayment(t));
+            MOVE PROPERTY (codeRegisterAccounting(t));
         }
     }
 }
@@ -387,6 +392,7 @@ newTransfer 'Добавить' (ReportingMonth r, Salary s) {
             month(t) <- month(r);
             year(t) <- year(r);
             employee(t) <- employee(s);
+            registerAccounting(t) <- registerAccounting('BYN/NAL');
             SHOW transfer OBJECTS t=t MANAGESESSION;
         }
     }
@@ -415,7 +421,7 @@ FORM salaries 'Начисление зарплаты'
     
     OBJECTS t = Transfer LAST 
     PROPERTIES(t) in
-    PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, nameOperation, sum, note, nameTypePayment
+    PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, nameOperation, sum, note, nameTypePayment, codeRegisterAccounting
     PROPERTIES READONLYIF closed(r) newTransfer(r, s) TOOLBAR DRAW t
     PROPERTIES(t) NEWSESSION EDIT
     ORDERS year(t), numberMonth(t), date(t), nameEmployee(t)
@@ -557,6 +563,7 @@ generateTransfersCurrentMonth 'Сформ-ть выплаты' (ReportingMonth r
             employee(t) <- employee(s) ;
             sum(t) <- payExtra(s);
             note(t) <- 'Сформировано программно';
+            registerAccounting(t) <- registerAccounting('BYN/BN');
         }
         APPLY ;
     }
@@ -590,6 +597,7 @@ generateTransfersCurrentMonthCash 'Сформ-ть выплаты (нал)' (Rep
             employee(t) <- employee(s) ;
             sum(t) <- payExtraCash(s);
             note(t) <- 'Сформировано программно';
+            registerAccounting(t) <- registerAccounting('BYN/NAL');
         }
         APPLY ;
     }
@@ -638,6 +646,7 @@ transferDeviaNextMonth 'Отклонение на след.месяц' (Reportin
             operation(t) <- uniqueCode('ПЗ', '2');
             employee(t) <- employee(s) ;
             sum(t) <- - deltaReal(s);
+            registerAccounting(t) <- registerAccounting('BYN/BN');
         }
         APPLY ;
     }
@@ -816,6 +825,7 @@ importTransfers 'Импорт выплат'(){
                     month(t) <- month(nummes());
                     year(t) <- numyear();
                     operation(t) <- uniqueCode(operation(), '2');
+                    registerAccounting(t) <- registerAccounting('BYN/BN');
                     qcount() <- qcount() + 1;
                     qsum() <- qsum() + sum(i);
                 }
