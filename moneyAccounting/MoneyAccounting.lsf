@@ -217,7 +217,7 @@ initialImport 'Первоначальный импорт' {
             
             DELETE MoneyMove m WHERE m IS MoneyMove;
             
-            FOR (MoveMoney mm IS MoveMoney) AND (codeSource(mm) = 'БУХ' OR codeSource(mm) = 'КАС') AND
+            FOR (MoveMoney mm IS MoveMoney) AND (codeSource(mm) = 'БУХ' OR codeSource(mm) = 'КАС' OR codeSource(mm)=='') AND
                 (nameCurrency(mm) = 'BYN' OR nameCurrency(mm) = 'USD' OR nameCurrency(mm) = 'RUB' OR nameCurrency(mm) = 'EUR') ORDER date(mm) DO NEW m = MoneyMove {
                 date(m) <- date(mm);
                 operation(m) <- operation(mm);
@@ -226,11 +226,11 @@ initialImport 'Первоначальный импорт' {
                 legalEntity(m) <- legalEntity(mm);
                 note(m) <- note(mm);
                 registerAccounting(m) <- CASE WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'BYN' THEN registerAccounting('BYN/BN')
-                                              WHEN codeSource(mm) = 'КАС' AND nameCurrency(mm) = 'BYN' THEN registerAccounting('BYN/NAL')
+                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='') AND nameCurrency(mm) = 'BYN' THEN registerAccounting('BYN/NAL')
                                               WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'USD' THEN registerAccounting('USD/BN')
-                                              WHEN codeSource(mm) = 'КАС' AND nameCurrency(mm) = 'USD' THEN registerAccounting('USD/NAL')
+                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='')  AND nameCurrency(mm) = 'USD' THEN registerAccounting('USD/NAL')
                                               WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'RUB' THEN registerAccounting('RUR/BN')
-                                              WHEN codeSource(mm) = 'КАС' AND nameCurrency(mm) = 'RUB' THEN registerAccounting('RUR/NAL')
+                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='')  AND nameCurrency(mm) = 'RUB' THEN registerAccounting('RUR/NAL')
                                               WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'EUR' THEN registerAccounting('EUR/BN')
                 ;
                 dateTimeEntry(m) <- currentDateTime();
