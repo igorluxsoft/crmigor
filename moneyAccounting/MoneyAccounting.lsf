@@ -1,7 +1,7 @@
 MODULE MoneyAccounting;
 
-//REQUIRE MoveMoney, MoveMoneyOpreration;
-REQUIRE MoveMoney;
+REQUIRE MoveMoneyOpreration, Payment, Expense;
+//REQUIRE MoveMoney;
 
 NAMESPACE MoneyAccounting;
 
@@ -269,9 +269,9 @@ WHEN SET(MoneyMove m IS MoneyMove) DO {
 //initialImport 'Первоначальный импорт' {
 //    ASK 'Внимание!   Будут удалены все записи в журнале! \n\n Продолжить первоначальный импорт ?' DO {
 //        NEWSESSION {
-//            
+//
 //            DELETE MoneyMove m WHERE m IS MoneyMove;
-//            
+//
 //            FOR (MoveMoney mm IS MoveMoney) AND (codeSource(mm) = 'БУХ' OR codeSource(mm) = 'КАС' OR codeSource(mm)=='') AND
 //                (nameCurrency(mm) = 'BYN' OR nameCurrency(mm) = 'USD' OR nameCurrency(mm) = 'RUB' OR nameCurrency(mm) = 'EUR') ORDER date(mm) DO NEW m = MoneyMove {
 //                date(m) <- date(mm);
@@ -303,10 +303,10 @@ WHEN SET(MoneyMove m IS MoneyMove) DO {
 ////
 
 //// Удалить все записи из журнала "Движение финансов"
-deleteAll 'Удалить все записи' {
-    ASK 'Внимание!   Будут удалены все записи в журнале! \n\n Продолжить ?' DO {
+deleteAll 'Удалить все записи по безналичным регистрам учета' {
+    ASK 'Внимание!   Будут удалены все записи  в журнале по безналичным регистрам учета ! \n\n Продолжить ?' DO {
         NEWSESSION {
-            DELETE MoneyMove m WHERE m IS MoneyMove;
+            DELETE MoneyMove m WHERE m IS MoneyMove AND isNoCash(registerAccounting(m));
             APPLY ;
         }
     }
