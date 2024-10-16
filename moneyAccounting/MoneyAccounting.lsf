@@ -10,6 +10,7 @@ code 'Код' = DATA STRING[20] (RegisterAccounting) NONULL;
 name 'Название' = DATA STRING[100] (RegisterAccounting) NONULL;
 currency = DATA Currency (RegisterAccounting) NONULL;
 shortNameCurrency 'Валюта' (RegisterAccounting r) = shortName(currency(r));
+isNoCash 'Безналичный' = DATA BOOLEAN (RegisterAccounting);
 
 select 'Отм.' = DATA LOCAL NESTED BOOLEAN (RegisterAccounting);
 countSelectRegisterAccounting = GROUP SUM 1 IF select(RegisterAccounting r);
@@ -18,7 +19,7 @@ registerAccounting = GROUP AGGR (RegisterAccounting r) BY code(r);
 
 FORM viewRegisterAccounting 'Регистры учета'
     OBJECTS r = RegisterAccounting
-    PROPERTIES(r) READONLY code, name, shortNameCurrency
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash
     PROPERTIES(r) NEWSESSION NEW, EDIT, DELETE
     ORDERS name(r)
 ;
@@ -34,7 +35,7 @@ unSelectAllRegisterAccounting 'Сбросить все' () {
 FORM listRegisterAccounting 'Регистры учета'
     OBJECTS r = RegisterAccounting
     PROPERTIES(r) select
-    PROPERTIES(r) READONLY code, name, shortNameCurrency
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash
     PROPERTIES selectAllRegisterAccounting() TOOLBAR, unSelectAllRegisterAccounting() TOOLBAR 
     LIST RegisterAccounting OBJECT r
     ORDERS name(r)
@@ -42,7 +43,7 @@ FORM listRegisterAccounting 'Регистры учета'
 
 FORM editRegisterAccounting 'Регистр учета'
     OBJECTS r = RegisterAccounting PANEL
-    PROPERTIES(r) code, name, shortNameCurrency
+    PROPERTIES(r) code, name, shortNameCurrency, isNoCash
     EDIT RegisterAccounting OBJECT r
 ;
 
@@ -124,6 +125,59 @@ recalculateSummaUSD 'Перерасчет сумм USD' () {
     }
 }
 
+/// Импорт из журналов "Платежи" и "Расходы"
+FORM inputParameters 'Параметры импорта'
+    OBJECTS dateimp = DATE PANEL
+    PROPERTIES dateimp 'Дата начала импорта' = VALUE (dateimp)
+    EVENTS ON INIT {
+        SEEK inputParameters.dateimp = firstDayOfMonth(currentDate());
+    }
+;
+
+importDataPayment 'Импорт платежи' (DATE dv) {
+    FOR (Payment p IS Payment) AND date(p) >= dv NEW m = MoneyMove DO {
+        date(m) <- date(p);
+        operation(m) <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+        summa(m) <- NUMERIC[14,2](sum(p));
+        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN')
+                                      WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN')
+                                      WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN')
+                                      WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN');
+        customer(m) <- customer(p);
+        legalEntity(m) <- legalEntity(p);
+        note(m) <- note(p);
+        dateTimeEntry(m) <- currentDateTime();
+        userEntry(m) <- currentUser();
+    }
+}
+
+importDataExpense 'Импорт расходы' (DATE dv) {
+    FOR (Expense p IS Expense) AND date(p) >= dv NEW m = MoneyMove DO {
+        date(m) <- date(p);
+        operation(m) <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+        summa(m) <- -(NUMERIC[14,2](sum(p)));
+        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN')
+            WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN')
+            WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN')
+            WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN');
+        customer(m) <- customer(p);
+        legalEntity(m) <- legalEntity(p);
+        note(m) <- note(p);
+        dateTimeEntry(m) <- currentDateTime();
+        userEntry(m) <- currentUser();
+    }
+}
+
+importData 'Импорт данных' () {
+    DIALOG inputParameters OBJECTS dateimp INPUT DO NEWSESSION {
+        LOCAL t = TypeExchange ();
+        DELETE MoneyMove m WHERE m IS MoneyMove AND date(m) >= dateimp AND isNoCash(registerAccounting(m));
+        importDataPayment(dateimp);
+        importDataExpense(dateimp);
+        APPLY ;
+    } ELSE MESSAGE 'Выполнение отменено';
+}
+
 filterMoneyMoveDateFrom 'Дата с' = DATA LOCAL DATE ();
 filterDateFrom (MoneyMove m) = date(m) >= filterMoneyMoveDateFrom() OR (m IS MoneyMove AND NOT filterMoneyMoveDateFrom());
 
@@ -159,6 +213,7 @@ FORM viewMoneyMove 'Движение денег'
     PROPERTIES(m) NEWSESSION NEW, EDIT, DELETE
     PROPERTIES recalculateBalance() TOOLBAR DRAW m
     PROPERTIES recalculateSummaUSD() TOOLBAR DRAW m
+    PROPERTIES importData() TOOLBAR DRAW m
     ORDERS date(m), codeOperation(m)
     FILTERS filterDateFrom(m),
         filterDateTo(m),
@@ -211,38 +266,52 @@ WHEN SET(MoneyMove m IS MoneyMove) DO {
 
 
 //// Первоначальный импорт из журнала "Движение финансов"
-initialImport 'Первоначальный импорт' {
-    ASK 'Внимание!   Будут удалены все записи в журнале! \n\n Продолжить первоначальный импорт ?' DO {
+//initialImport 'Первоначальный импорт' {
+//    ASK 'Внимание!   Будут удалены все записи в журнале! \n\n Продолжить первоначальный импорт ?' DO {
+//        NEWSESSION {
+//            
+//            DELETE MoneyMove m WHERE m IS MoneyMove;
+//            
+//            FOR (MoveMoney mm IS MoveMoney) AND (codeSource(mm) = 'БУХ' OR codeSource(mm) = 'КАС' OR codeSource(mm)=='') AND
+//                (nameCurrency(mm) = 'BYN' OR nameCurrency(mm) = 'USD' OR nameCurrency(mm) = 'RUB' OR nameCurrency(mm) = 'EUR') ORDER date(mm) DO NEW m = MoneyMove {
+//                date(m) <- date(mm);
+//                operation(m) <- operation(mm);
+//                summa(m) <- suma(mm);
+//                customer(m) <- customer(mm);
+//                legalEntity(m) <- legalEntity(mm);
+//                note(m) <- note(mm);
+//                registerAccounting(m) <- CASE WHEN codeSource(mm)  = 'БУХ' AND nameCurrency(mm) = 'BYN' THEN registerAccounting('BYN/BN')
+//                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='') AND nameCurrency(mm) = 'BYN' THEN registerAccounting('BYN/NAL')
+//                                              WHEN codeSource(mm)  = 'БУХ' AND nameCurrency(mm) = 'USD' THEN registerAccounting('USD/BN')
+//                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='')  AND nameCurrency(mm) = 'USD' THEN registerAccounting('USD/NAL')
+//                                              WHEN codeSource(mm)  = 'БУХ' AND nameCurrency(mm) = 'RUB' THEN registerAccounting('RUR/BN')
+//                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='')  AND nameCurrency(mm) = 'RUB' THEN registerAccounting('RUR/NAL')
+//                                              WHEN codeSource(mm)  = 'БУХ' AND nameCurrency(mm) = 'EUR' THEN registerAccounting('EUR/BN')
+//                ;
+//                dateTimeEntry(m) <- currentDateTime();
+//                userEntry(m) <- currentUser();
+//            }
+//            APPLY;
+//        }
+//        MESSAGE 'Первоначальный импорт завершен';
+//    }
+//}
+//
+//EXTEND FORM viewMoneyMove
+//    PROPERTIES() initialImport TOOLBAR 
+//;
+////
+
+//// Удалить все записи из журнала "Движение финансов"
+deleteAll 'Удалить все записи' {
+    ASK 'Внимание!   Будут удалены все записи в журнале! \n\n Продолжить ?' DO {
         NEWSESSION {
-            
             DELETE MoneyMove m WHERE m IS MoneyMove;
-            
-            FOR (MoveMoney mm IS MoveMoney) AND (codeSource(mm) = 'БУХ' OR codeSource(mm) = 'КАС' OR codeSource(mm)=='') AND
-                (nameCurrency(mm) = 'BYN' OR nameCurrency(mm) = 'USD' OR nameCurrency(mm) = 'RUB' OR nameCurrency(mm) = 'EUR') ORDER date(mm) DO NEW m = MoneyMove {
-                date(m) <- date(mm);
-                operation(m) <- operation(mm);
-                summa(m) <- suma(mm);
-                customer(m) <- customer(mm);
-                legalEntity(m) <- legalEntity(mm);
-                note(m) <- note(mm);
-                registerAccounting(m) <- CASE WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'BYN' THEN registerAccounting('BYN/BN')
-                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='') AND nameCurrency(mm) = 'BYN' THEN registerAccounting('BYN/NAL')
-                                              WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'USD' THEN registerAccounting('USD/BN')
-                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='')  AND nameCurrency(mm) = 'USD' THEN registerAccounting('USD/NAL')
-                                              WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'RUB' THEN registerAccounting('RUR/BN')
-                                              WHEN (codeSource(mm) = 'КАС' OR codeSource(mm)=='')  AND nameCurrency(mm) = 'RUB' THEN registerAccounting('RUR/NAL')
-                                              WHEN codeSource(mm) = 'БУХ' AND nameCurrency(mm) = 'EUR' THEN registerAccounting('EUR/BN')
-                ;
-                dateTimeEntry(m) <- currentDateTime();
-                userEntry(m) <- currentUser();
-            }
-            APPLY;
+            APPLY ;
         }
-        MESSAGE 'Первоначальный импорт завершен';
     }
 }
 
 EXTEND FORM viewMoneyMove
-    PROPERTIES() initialImport TOOLBAR 
+    PROPERTIES() deleteAll TOOLBAR
 ;
-////
