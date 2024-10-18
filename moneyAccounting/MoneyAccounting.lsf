@@ -72,6 +72,8 @@ dateTimeEntry 'Время создания' = DATA DATETIME (MoneyMove);
 userEntry 'Создан пользователем' = DATA Employee (MoneyMove);
 nameUserEntry 'Создан пользователем' (MoneyMove m) = name(userEntry(m));
 
+in 'Отм.' = DATA LOCAL BOOLEAN (MoneyMove);
+
 FORM editMoneyMove 'Движение денег'
     OBJECTS m = MoneyMove PANEL
     PROPERTIES (m) date, nameOperation, nameRegisterAccounting, summa, balance, summaUSD, nameCustomer, nameLegalEntity, nameEmployee, note, note2
@@ -178,6 +180,30 @@ importData 'Импорт данных' () {
     } ELSE MESSAGE 'Выполнение отменено';
 }
 
+///// Удаление отмеченных записей
+countInMoneyMove = GROUP SUM 1 IF in(MoneyMove m) AND m IS MoneyMove;
+
+deleteInMoneyMove 'Удалить' (MoneyMove m)  {
+    NEWSESSION NESTED(in[MoneyMove]) {
+        IF countInMoneyMove() THEN {
+            ASK 'Вы действительно хотите удалить отмеченные записи  ?'+
+                '\n\n Количество отмеченных записей  ' + countInMoneyMove() DO {
+                DELETE MoneyMove mm WHERE mm IS MoneyMove AND in(mm);
+                APPLY ;
+            }
+        }
+        ELSE {
+            ASK 'Вы действительно хотите удалить текущую запись  ?' DO {
+                NEWSESSION NESTED LOCAL {
+                    DELETE m;
+                    APPLY ;
+                }
+            }
+        }
+    }
+} IMAGE 'delete.png';
+
+
 filterMoneyMoveDateFrom 'Дата с' = DATA LOCAL DATE ();
 filterDateFrom (MoneyMove m) = date(m) >= filterMoneyMoveDateFrom() OR (m IS MoneyMove AND NOT filterMoneyMoveDateFrom());
 
@@ -208,13 +234,15 @@ FORM viewMoneyMove 'Движение денег'
     PROPERTIES() filterMoneyMoveDateFrom, filterMoneyMoveDateTo, nameFilterRegisterAccounting, nameFilterOperation, nameFilterCustomer, nameFilterLegalEntity, nameFilterEmployee
     
     OBJECTS m = MoneyMove LAST 
+    PROPERTIES(m) in
     PROPERTIES(m) READONLY date, codeOperation, nameOperation, codeRegisterAccounting, nameRegisterAccounting, summa, balance, shortNameCurrency, summaUSD,
                            nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry
-    PROPERTIES(m) NEWSESSION NEW, EDIT, DELETE
+    PROPERTIES(m) NEWSESSION NEW, EDIT
     PROPERTIES recalculateBalance() TOOLBAR DRAW m
     PROPERTIES recalculateSummaUSD() TOOLBAR DRAW m
     PROPERTIES importData() TOOLBAR DRAW m
-    ORDERS date(m), codeOperation(m)
+    PROPERTIES(m) deleteInMoneyMove TOOLBAR LAST 
+    ORDERS date(m), codeOperation(m) 
     FILTERS filterDateFrom(m),
         filterDateTo(m),
         filterRegisterAccounting(m),
