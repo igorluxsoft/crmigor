@@ -86,7 +86,7 @@ recalculateBalance 'Перерасчет остатков' () {
             
             FOR select(RegisterAccounting ra) DO {
                 bal() <- 0.0;
-                FOR registerAccounting(MoneyMove m)==ra ORDER date(m), codeOperation(m) DO {
+                FOR registerAccounting(MoneyMove m)==ra ORDER date(m), codeOperation(m), m DO {
                     bal() <- bal() (+) summa(m);
                     balance(m) <- bal();
                 }
