@@ -5,6 +5,23 @@ REQUIRE MoveMoneyOpreration, Payment, Expense;
 
 NAMESPACE MoneyAccounting;
 
+noImport 'Не импортировать в Движение денег' = DATA BOOLEAN (MoveMoneyOpreration);
+
+EXTEND FORM viewMoveMoneyOpreration
+    PROPERTIES(o) READONLY noImport
+;
+EXTEND FORM listMoveMoneyOpreration
+    PROPERTIES(o) READONLY noImport
+;
+EXTEND FORM ediMoveMoneyOpreration
+    PROPERTIES(o) noImport
+;
+DESIGN ediMoveMoneyOpreration {
+    BOX(o) {
+        MOVE PROPERTY (noImport(o));
+    }
+}
+
 CLASS RegisterAccounting 'Регистр учета';
 code 'Код' = DATA STRING[20] (RegisterAccounting) NONULL;
 name 'Название' = DATA STRING[100] (RegisterAccounting) NONULL;
@@ -136,15 +153,24 @@ FORM inputParameters 'Параметры импорта'
     }
 ;
 
+messPayment = DATA LOCAL STRING ();
+messExpense = DATA LOCAL STRING ();
+
 importDataPayment 'Импорт платежи' (DATE dv) {
-    FOR (Payment p IS Payment) AND date(p) >= dv NEW m = MoneyMove DO {
+    FOR (Payment p IS Payment) AND date(p) >= dv AND (NOT type(p) OR NOT (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p)) OR  
+      NOT (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB')) ORDER date(p),p DO {
+        messPayment() <- messPayment() + '\n' + (OVERRIDE toChar(date(p),'DD.MM.YYYY'),'') + ' ' + (OVERRIDE toChar(sum(p),'9999999.99'),'') + ' ' + OVERRIDE nameType(p),'';
+    }
+    
+    FOR (Payment p IS Payment) AND date(p) >= dv AND type(p) AND (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p) AND NOT noImport(s)) AND 
+      (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB') ORDER date(p),p NEW m = MoneyMove DO {
         date(m) <- date(p);
         operation(m) <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
         summa(m) <- NUMERIC[14,2](sum(p));
-        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN')
-                                      WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN')
-                                      WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN')
-                                      WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN');
+        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
+                                      WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
+                                      WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
+                                      WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS');
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
         note(m) <- note(p);
@@ -154,14 +180,20 @@ importDataPayment 'Импорт платежи' (DATE dv) {
 }
 
 importDataExpense 'Импорт расходы' (DATE dv) {
-    FOR (Expense p IS Expense) AND date(p) >= dv NEW m = MoneyMove DO {
+    FOR (Expense p IS Expense) AND date(p) >= dv AND (NOT type(p) OR NOT (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p)) OR
+      NOT (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB')) ORDER date(p),p DO {
+        messExpense() <- messExpense() + '\n' + (OVERRIDE toChar(date(p),'DD.MM.YYYY'),'') + ' ' + (OVERRIDE toChar(sum(p),'9999999.99'),'') + ' ' + OVERRIDE nameType(p),'';
+    }
+    
+    FOR (Expense p IS Expense) AND date(p) >= dv AND type(p) AND (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p) AND NOT noImport(s)) AND 
+      (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB') ORDER date(p),p NEW m = MoneyMove DO {
         date(m) <- date(p);
         operation(m) <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
         summa(m) <- -(NUMERIC[14,2](sum(p)));
-        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN')
-            WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN')
-            WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN')
-            WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN');
+        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
+                                      WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
+                                      WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
+                                      WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS');
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
         note(m) <- note(p);
@@ -171,11 +203,22 @@ importDataExpense 'Импорт расходы' (DATE dv) {
 }
 
 importData 'Импорт данных' () {
-    DIALOG inputParameters OBJECTS dateimp INPUT DO NEWSESSION {
+    messPayment() <- '';
+    messExpense() <- '';
+    
+    DIALOG inputParameters OBJECTS dateimp INPUT DO NEWSESSION NESTED LOCAL {
         LOCAL t = TypeExchange ();
+        LOCAL mess = STRING ();
+        
         DELETE MoneyMove m WHERE m IS MoneyMove AND date(m) >= dateimp AND isNoCash(registerAccounting(m));
         importDataPayment(dateimp);
         importDataExpense(dateimp);
+        IF length(messPayment()) > 5 OR length(messExpense()) > 5 THEN {
+            IF length(messPayment()) > 5 THEN messPayment() <- '    ПЛАТЕЖИ :\n' + messPayment();
+            IF length(messExpense()) > 5 THEN messExpense() <- '\n\n    РАСХОДЫ :\n' + messExpense();
+            mess() <- 'Некорректные записи:\n\n' + messPayment() + messExpense();
+            MESSAGE mess();
+        }
         APPLY ;
     } ELSE MESSAGE 'Выполнение отменено';
 }
@@ -222,16 +265,12 @@ filterCustomer 'Клиент' = DATA LOCAL Customer ();
 nameFilterCustomer 'Клиент' = name(filterCustomer()) CHARWIDTH 15;
 filterCustomer(MoneyMove m) = customer(m) == filterCustomer() OR (m IS MoneyMove AND NOT filterCustomer());
 
-filterLegalEntity 'Организация' = DATA LOCAL LegalEntity ();
-nameFilterLegalEntity 'Организация' = name(filterLegalEntity()) CHARWIDTH 15;
-filterLegalEntity(MoneyMove m) = legalEntity(m) == filterLegalEntity() OR (m IS MoneyMove AND NOT filterLegalEntity());
-
 filterEmployee 'Сотрудник' = DATA LOCAL Employee ();
 nameFilterEmployee 'Сотрудник' = name(filterEmployee()) CHARWIDTH 15;
 filterEmployee(MoneyMove m) = employee(m) == filterEmployee() OR (m IS MoneyMove AND NOT filterEmployee());
 
 FORM viewMoneyMove 'Движение денег'
-    PROPERTIES() filterMoneyMoveDateFrom, filterMoneyMoveDateTo, nameFilterRegisterAccounting, nameFilterOperation, nameFilterCustomer, nameFilterLegalEntity, nameFilterEmployee
+    PROPERTIES() filterMoneyMoveDateFrom, filterMoneyMoveDateTo, nameFilterRegisterAccounting, nameFilterOperation, nameFilterCustomer, nameFilterEmployee
     
     OBJECTS m = MoneyMove LAST 
     PROPERTIES(m) in
@@ -248,7 +287,6 @@ FORM viewMoneyMove 'Движение денег'
         filterRegisterAccounting(m),
         filterOperation(m),
         filterCustomer(m),
-        filterLegalEntity(m),
         filterEmployee(m)
     
     OBJECTS mm = MoneyMove PANEL
@@ -273,7 +311,6 @@ DESIGN viewMoneyMove {
             MOVE PROPERTY(nameFilterRegisterAccounting());
             MOVE PROPERTY (nameFilterOperation());
             MOVE PROPERTY (nameFilterCustomer());
-            MOVE PROPERTY(nameFilterLegalEntity());
             MOVE PROPERTY(nameFilterEmployee());
         }
         MOVE BOX(m);
@@ -331,15 +368,15 @@ WHEN SET(MoneyMove m IS MoneyMove) DO {
 ////
 
 //// Удалить все записи из журнала "Движение финансов"
-deleteAll 'Удалить все записи по безналичным регистрам учета' {
-    ASK 'Внимание!   Будут удалены все записи  в журнале по безналичным регистрам учета ! \n\n Продолжить ?' DO {
-        NEWSESSION {
-            DELETE MoneyMove m WHERE m IS MoneyMove AND isNoCash(registerAccounting(m));
-            APPLY ;
-        }
-    }
-}
-
-EXTEND FORM viewMoneyMove
-    PROPERTIES() deleteAll TOOLBAR
-;
+//deleteAll 'Удалить все записи по безналичным регистрам учета' {
+//    ASK 'Внимание!   Будут удалены все записи  в журнале по безналичным регистрам учета ! \n\n Продолжить ?' DO {
+//        NEWSESSION {
+//            DELETE MoneyMove m WHERE m IS MoneyMove AND isNoCash(registerAccounting(m));
+//            APPLY ;
+//        }
+//    }
+//}
+//
+//EXTEND FORM viewMoneyMove
+//    PROPERTIES() deleteAll TOOLBAR
+//;
