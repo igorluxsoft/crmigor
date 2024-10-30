@@ -28,6 +28,12 @@ name 'Название' = DATA STRING[100] (RegisterAccounting) NONULL;
 currency = DATA Currency (RegisterAccounting) NONULL;
 shortNameCurrency 'Валюта' (RegisterAccounting r) = shortName(currency(r));
 isNoCash 'Безналичный' = DATA BOOLEAN (RegisterAccounting);
+koeff 'Коэффициент' = DATA NUMERIC[12,2] (RegisterAccounting) ;
+// 0 - внутренний, >0 - внешний
+isInternal 'Внутр./внеш.' = DATA INTEGER (RegisterAccounting);
+//dateTimeKorr 'Дата/время посл. корр-ки' = DATA DATETIME (RegisterAccounting);
+dateTimeBalance 'Дата/время расчета остатков' = DATA DATETIME (RegisterAccounting);
+dateTimeSummaUSD 'Дата/время расчета сумм USD' = DATA DATETIME (RegisterAccounting);
 
 select 'Отм.' = DATA LOCAL NESTED BOOLEAN (RegisterAccounting);
 countSelectRegisterAccounting = GROUP SUM 1 IF select(RegisterAccounting r);
@@ -36,7 +42,7 @@ registerAccounting = GROUP AGGR (RegisterAccounting r) BY code(r);
 
 FORM viewRegisterAccounting 'Регистры учета'
     OBJECTS r = RegisterAccounting
-    PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
     PROPERTIES(r) NEWSESSION NEW, EDIT, DELETE
     ORDERS name(r)
 ;
@@ -52,7 +58,7 @@ unSelectAllRegisterAccounting 'Сбросить все' () {
 FORM listRegisterAccounting 'Регистры учета'
     OBJECTS r = RegisterAccounting
     PROPERTIES(r) select
-    PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
     PROPERTIES selectAllRegisterAccounting() TOOLBAR, unSelectAllRegisterAccounting() TOOLBAR 
     LIST RegisterAccounting OBJECT r
     ORDERS name(r)
@@ -60,42 +66,103 @@ FORM listRegisterAccounting 'Регистры учета'
 
 FORM editRegisterAccounting 'Регистр учета'
     OBJECTS r = RegisterAccounting PANEL
-    PROPERTIES(r) code, name, shortNameCurrency, isNoCash
+    PROPERTIES(r) code, name, shortNameCurrency, isNoCash, koeff, isInternal
     EDIT RegisterAccounting OBJECT r
 ;
 
+WHEN LOCAL FORMS editRegisterAccounting SETCHANGED(code(RegisterAccounting r)) AND NOT isInternal(r) DO {
+    isInternal(r) <- 0;
+}
 
 CLASS MoneyMove 'Движение денег';
 registerAccounting 'Регистр учета' = DATA RegisterAccounting (MoneyMove);
-nameRegisterAccounting 'Регистр учета' = name(registerAccounting(MoneyMove m));
-codeRegisterAccounting 'Регистр учета' = code(registerAccounting(MoneyMove m));
+nameRegisterAccounting 'Регистр учета' = name(registerAccounting(MoneyMove m)) CHARWIDTH 7;
+codeRegisterAccounting 'Регистр учета' = code(registerAccounting(MoneyMove m)) CHARWIDTH 7;
 shortNameCurrency 'Валюта' = shortNameCurrency(registerAccounting(MoneyMove m));
 operation 'Операция' = DATA MoveMoneyOpreration (MoneyMove);
-nameOperation 'Операция' = name(operation(MoneyMove m));
-codeOperation 'Код операции' = code(operation(MoneyMove m));
+nameOperation 'Операция' = name(operation(MoneyMove m)) CHARWIDTH 7;
+codeOperation 'Код операции' = code(operation(MoneyMove m)) CHARWIDTH 3;
 date 'Дата' = DATA DATE (MoneyMove);
 summa 'Сумма' = DATA NUMERIC[14,2] (MoneyMove);
 summaUSD 'Сумма, USD' = DATA NUMERIC[14,2] (MoneyMove);
 balance 'Остаток после операции' = DATA NUMERIC[14,2] (MoneyMove);
 customer 'Клиент' = DATA Customer (MoneyMove);
-nameCustomer 'Клиент' (MoneyMove m) = name(customer(m));
+nameCustomer 'Клиент' (MoneyMove m) = name(customer(m)) CHARWIDTH 5;
 legalEntity 'Организация' = DATA LegalEntity (MoneyMove);
-nameLegalEntity 'Организация'(MoneyMove m) = name(legalEntity(m));
+nameLegalEntity 'Организация'(MoneyMove m) = name(legalEntity(m)) CHARWIDTH 5;
 employee 'Сотрудник' = DATA Employee (MoneyMove) ;
-nameEmployee 'Сотрудник' (MoneyMove m) = fullName(employee(m)) CHARWIDTH 15;
-note 'Примечание' = DATA STRING  (MoneyMove);
-note2 'Примечание-2' = DATA STRING  (MoneyMove);
+nameEmployee 'Сотрудник' (MoneyMove m) = fullName(employee(m)) CHARWIDTH 5;
+note 'Примечание' = DATA STRING  (MoneyMove) CHARWIDTH 5;
+note2 'Примечание-2' = DATA STRING  (MoneyMove) CHARWIDTH 5;
 dateTimeEntry 'Время создания' = DATA DATETIME (MoneyMove);
 userEntry 'Создан пользователем' = DATA Employee (MoneyMove);
-nameUserEntry 'Создан пользователем' (MoneyMove m) = name(userEntry(m));
+nameUserEntry 'Создан пользователем' (MoneyMove m) = name(userEntry(m)) CHARWIDTH 5;
+dateTimeKorr 'Время корр-ки' = DATA DATETIME (MoneyMove);
+userKorr 'Корр-ка пользователем' = DATA Employee (MoneyMove);
+nameUserKorr 'Корр-ка пользователем' (MoneyMove m) = name(userKorr(m)) CHARWIDTH 5;
 
 in 'Отм.' = DATA LOCAL BOOLEAN (MoneyMove);
 
 FORM editMoneyMove 'Движение денег'
     OBJECTS m = MoneyMove PANEL
-    PROPERTIES (m) date, nameOperation, nameRegisterAccounting, summa, balance, summaUSD, nameCustomer, nameLegalEntity, nameEmployee, note, note2
+    PROPERTIES (m) date, nameOperation, nameRegisterAccounting, summa, balance READONLY, summaUSD READONLY, nameCustomer, nameLegalEntity, nameEmployee, note, note2
     EDIT MoneyMove OBJECT m
 ;
+
+DESIGN editMoneyMove {
+    OBJECTS {
+        NEW cnt1 {
+            MOVE PROPERTY (date(m));
+            MOVE PROPERTY (nameRegisterAccounting(m));
+            MOVE PROPERTY (nameOperation(m));
+            MOVE PROPERTY (nameCustomer(m));
+            MOVE PROPERTY (nameLegalEntity(m));
+            MOVE PROPERTY (nameEmployee(m)) {charWidth = 50;}
+        }
+        NEW cnt2 {
+            caption = 'Суммы';
+            MOVE PROPERTY (summa(m)){charWidth = 20;}
+            MOVE PROPERTY (balance(m));
+            MOVE PROPERTY (summaUSD(m));
+        }
+        NEW cnt3 {
+            alignment = STRETCH;
+            caption = 'Примечания';
+            MOVE PROPERTY (note(m)) {fill=1;alignment = STRETCH;}
+            MOVE PROPERTY (note2(m)) {fill=1;alignment = STRETCH;}
+        }
+    }
+}
+
+WHEN LOCAL FORMS editMoneyMove (CHANGED(date(MoneyMove m)) OR CHANGED(registerAccounting(m)) OR CHANGED(operation(m)) OR CHANGED(summa(m)) OR
+    CHANGED(customer(m)) OR CHANGED(legalEntity(m)) OR CHANGED(employee(m))) AND PREV(m IS MoneyMove) DO {
+    dateTimeKorr(m) <- currentDateTime();
+    userKorr(m) <- currentUser();
+}
+
+dateTimeKorr 'Дата/время посл. корр-ки' = GROUP LAST dateTimeKorr(MoneyMove m) ORDER dateTimeKorr(m) BY registerAccounting(m);
+balance 'Текущий остаток' = GROUP LAST balance(MoneyMove m) ORDER dateTimeKorr(m) BY registerAccounting(m);
+
+EXTEND FORM viewRegisterAccounting
+    PROPERTIES(r) dateTimeKorr, balance
+;
+EXTEND FORM listRegisterAccounting
+    PROPERTIES(r) dateTimeKorr, balance
+;
+
+//
+FORM listRegisterAccountingSmall 'Регистры учета'
+    OBJECTS r = RegisterAccounting
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, balance
+    ORDERS name(r)
+;
+DESIGN listRegisterAccountingSmall {
+    size = (500, 500);
+}
+showRegisterAccountingSmall 'Остатки по регистрам' {
+    SHOW listRegisterAccountingSmall;
+}
+//
 
 recalculateBalance 'Перерасчет остатков' () {
     DIALOG listRegisterAccounting OBJECTS r INPUT DO {
@@ -109,6 +176,7 @@ recalculateBalance 'Перерасчет остатков' () {
                     bal() <- bal() (+) summa(m);
                     balance(m) <- bal();
                 }
+                dateTimeBalance(ra) <- currentDateTime();
                 select(ra) <- NULL ;
             }
             APPLY;
@@ -136,6 +204,7 @@ recalculateSummaUSD 'Перерасчет сумм USD' () {
                         summaUSD(m) <- round2(s() * rateOn(defaultTypeExchange(), currency(tBYN()), date(m)));
                     }    
                 }
+                dateTimeSummaUSD(ra) <- currentDateTime();
                 select(ra) <- NULL ;
             }
             APPLY;
@@ -258,7 +327,7 @@ nameFilterRegisterAccounting 'Регистр учета' = name(filterRegisterAc
 filterRegisterAccounting(MoneyMove m) = registerAccounting(m) == filterRegisterAccounting() OR (m IS MoneyMove AND NOT filterRegisterAccounting());
 
 filterOperation 'Регистр учета' = DATA LOCAL MoveMoneyOpreration ();
-nameFilterOperation 'Операцмя' = name(filterOperation()) CHARWIDTH 15;
+nameFilterOperation 'Операция' = name(filterOperation()) CHARWIDTH 15;
 filterOperation(MoneyMove m) = operation(m) == filterOperation() OR (m IS MoneyMove AND NOT filterOperation());
 
 filterCustomer 'Клиент' = DATA LOCAL Customer ();
@@ -275,8 +344,9 @@ FORM viewMoneyMove 'Движение денег'
     OBJECTS m = MoneyMove LAST 
     PROPERTIES(m) in
     PROPERTIES(m) READONLY date, codeOperation, nameOperation, codeRegisterAccounting, nameRegisterAccounting, summa, balance, shortNameCurrency, summaUSD,
-                           nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry
+                           nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
     PROPERTIES(m) NEWSESSION NEW, EDIT
+    PROPERTIES showRegisterAccountingSmall() TOOLBAR DRAW m
     PROPERTIES recalculateBalance() TOOLBAR DRAW m
     PROPERTIES recalculateSummaUSD() TOOLBAR DRAW m
     PROPERTIES importData() TOOLBAR DRAW m
@@ -290,17 +360,32 @@ FORM viewMoneyMove 'Движение денег'
         filterEmployee(m)
     
     OBJECTS mm = MoneyMove PANEL
-        PROPERTIES(mm) READONLY note, note2
+        PROPERTIES(mm) READONLY note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
         FILTERS mm=m
 ;
 
 DESIGN viewMoneyMove {
     OBJECTS {
-        NEW cntrz {
-            caption = 'Текущие значения';
-            alignment = STRETCH;
-            MOVE PROPERTY(note(mm));
-            MOVE PROPERTY(note2(mm));
+        NEW headerBox {
+            horizontal = TRUE;
+            alignment = STRETCH;        
+            NEW cntrz {
+                caption = 'Текущие значения';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE PROPERTY(note(mm));
+                MOVE PROPERTY(note2(mm));
+            }
+            NEW cntrz2 {
+                caption = 'Создание';
+                MOVE PROPERTY(dateTimeEntry(mm)) {caption='Дата/время';}
+                MOVE PROPERTY(nameUserEntry(mm)) {caption='Пользователь';}
+            }
+            NEW cntrz3 {
+                caption = 'Корректировка';
+                MOVE PROPERTY(dateTimeKorr(mm)) {caption='Дата/время';}
+                MOVE PROPERTY(nameUserKorr(mm)) {caption='Пользователь';}
+            }
         }
         NEW topFilters {
             caption = 'Фильтры';

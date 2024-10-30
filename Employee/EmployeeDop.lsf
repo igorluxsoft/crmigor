@@ -1,0 +1,24 @@
+MODULE EmployeeDop;
+
+REQUIRE EmployeeNew;
+
+NAMESPACE Contact;
+
+dateDismissal 'Дата увольнения' = DATA DATE (Employee);
+
+EXTEND FORM employees
+    PROPERTIES(o) READONLY dateDismissal
+;
+
+EXTEND FORM employee
+    PROPERTIES(o) dateDismissal
+;
+
+DESIGN employee {
+    OBJECTS {
+        dop3 {
+            MOVE PROPERTY (dateDismissal(o)) AFTER PROPERTY (employmentDate(o));
+        }
+    }
+}
+

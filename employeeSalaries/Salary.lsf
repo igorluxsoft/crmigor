@@ -1,6 +1,6 @@
 MODULE Salary;
 
-REQUIRE EmployeeNew, MoveMoneyOpreration, EmployeeAbsence, MoneyAccounting;
+REQUIRE EmployeeDop, MoveMoneyOpreration, EmployeeAbsence, MoneyAccounting;
 
 NAMESPACE Salary;
 
@@ -26,17 +26,18 @@ minReportingMonthNoClosed = reportingMonth(minYearNoClosed(),minMonthNoClosed())
 
 CLASS Transfer 'Выплата';
 in 'Отм.' = DATA LOCAL NESTED BOOLEAN (Transfer);
-number 'Номер документа' = DATA STRING[15] (Transfer);
+number 'Номер документа' = DATA STRING[15] (Transfer) CHARWIDTH 5;
 date 'Дата документа' = DATA DATE (Transfer);
 month 'Месяц' = DATA Month (Transfer) NONULL ;
 numberMonth 'Месяц' (Transfer t) = number(month(t));
-nameMonth 'Месяц' (Transfer t) = staticCaption(month(t));
+nameMonth 'Месяц' (Transfer t) = staticCaption(month(t)) CHARWIDTH 5;
 
 year 'Год' = DATA INTEGER (Transfer) NONULL ;
 operation 'Операция' = DATA MoveMoneyOpreration (Transfer) NONULL ;
-nameOperation 'Операция' (Transfer t) = name(operation(t));
+nameOperation 'Операция' (Transfer t) = name(operation(t)) CHARWIDTH 5;
+codeOperation 'Код операции' (Transfer t) = code(operation(t)) CHARWIDTH 5;
 employee 'Сотрудник' = DATA Employee (Transfer) NONULL ;
-nameEmployee 'Сотрудник' (Transfer t) = fullName(employee(t));
+nameEmployee 'Сотрудник' (Transfer t) = fullName(employee(t)) CHARWIDTH 5;
 
 sum 'Сумма' = DATA NUMERIC[12,2] (Transfer);
 note 'Примечание' = DATA STRING (Transfer);
@@ -364,7 +365,7 @@ addAllSalaries 'Добавить сотрудников' (ReportingMonth r) {
     maxYear()  <- GROUP MAX year(Salary s);
     maxMonth() <- month(GROUP MAX number(month(Salary s)) IF year(s)=maxYear()) ;
         
-    FOR Employee e IS Employee AND NOT inactive(e) AND personalAccount(e) NEW s = Salary DO {
+    FOR Employee e IS Employee AND NOT inactive(e) AND personalAccount(e) AND NOT dateDismissal(e) NEW s = Salary DO {
         month(s) <- month(r);
         year(s) <- year(r);
         employee(s) <- e;
@@ -421,7 +422,7 @@ FORM salaries 'Начисление зарплаты'
     
     OBJECTS t = Transfer LAST 
     PROPERTIES(t) in
-    PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, nameOperation, sum, note, nameTypePayment, codeRegisterAccounting
+    PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, codeOperation, nameOperation, sum, note, nameTypePayment, codeRegisterAccounting
     PROPERTIES READONLYIF closed(r) newTransfer(r, s) TOOLBAR DRAW t
     PROPERTIES(t) NEWSESSION EDIT
     ORDERS year(t), numberMonth(t), date(t), nameEmployee(t)
