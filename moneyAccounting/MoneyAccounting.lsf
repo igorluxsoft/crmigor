@@ -23,8 +23,8 @@ DESIGN ediMoveMoneyOpreration {
 }
 
 CLASS RegisterAccounting 'Регистр учета';
-code 'Код' = DATA STRING[20] (RegisterAccounting) NONULL;
-name 'Название' = DATA STRING[100] (RegisterAccounting) NONULL;
+code 'Код' = DATA STRING[20] (RegisterAccounting) NONULL CHARWIDTH 5;
+name 'Название' = DATA STRING[100] (RegisterAccounting) NONULL CHARWIDTH 10;
 currency = DATA Currency (RegisterAccounting) NONULL;
 shortNameCurrency 'Валюта' (RegisterAccounting r) = shortName(currency(r));
 isNoCash 'Безналичный' = DATA BOOLEAN (RegisterAccounting);
@@ -141,7 +141,11 @@ WHEN LOCAL FORMS editMoneyMove (CHANGED(date(MoneyMove m)) OR CHANGED(registerAc
 }
 
 dateTimeKorr 'Дата/время посл. корр-ки' = GROUP LAST dateTimeKorr(MoneyMove m) ORDER dateTimeKorr(m) BY registerAccounting(m);
-balance 'Текущий остаток' = GROUP LAST balance(MoneyMove m) ORDER dateTimeKorr(m) BY registerAccounting(m);
+balance 'Текущий остаток' = GROUP LAST balance(MoneyMove m) ORDER date(m), codeOperation(m), m BY registerAccounting(m);
+balanceUSD 'Текущий остаток, USD' = CASE 
+    WHEN shortName(currency(RegisterAccounting r)) = 'USD' THEN balance(r)
+    WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate()))
+    ELSE round2(balance(r) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), currentDate()) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate())) ;
 
 EXTEND FORM viewRegisterAccounting
     PROPERTIES(r) dateTimeKorr, balance
@@ -153,11 +157,11 @@ EXTEND FORM listRegisterAccounting
 //
 FORM listRegisterAccountingSmall 'Регистры учета'
     OBJECTS r = RegisterAccounting
-    PROPERTIES(r) READONLY code, name, shortNameCurrency, balance
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, balance, balanceUSD
     ORDERS name(r)
 ;
 DESIGN listRegisterAccountingSmall {
-    size = (500, 500);
+    size = (600, 500);
 }
 showRegisterAccountingSmall 'Остатки по регистрам' {
     SHOW listRegisterAccountingSmall;
@@ -292,6 +296,25 @@ importData 'Импорт данных' () {
     } ELSE MESSAGE 'Выполнение отменено';
 }
 
+///// Добавить запись по текущей
+addFromCurrent 'Добавить по тек.'(MoneyMove mmtek)  {
+    NEWSESSION {
+        NEW m = MoneyMove {
+            date(m) <- currentDate();
+            registerAccounting(m) <- registerAccounting(mmtek);
+            operation(m) <- operation(mmtek);
+            customer(m) <- customer(mmtek);
+            legalEntity(m) <- legalEntity(mmtek);
+            employee(m) <- employee(mmtek);
+            summa(m) <- summa(mmtek);
+            note(m) <- note(mmtek);
+            note2(m) <- note2(mmtek);
+            
+            SHOW editMoneyMove OBJECTS m = m DOCKED;
+        }
+    }
+}
+
 ///// Удаление отмеченных записей
 countInMoneyMove = GROUP SUM 1 IF in(MoneyMove m) AND m IS MoneyMove;
 
@@ -345,12 +368,13 @@ FORM viewMoneyMove 'Движение денег'
     PROPERTIES(m) in
     PROPERTIES(m) READONLY date, codeOperation, nameOperation, codeRegisterAccounting, nameRegisterAccounting, summa, balance, shortNameCurrency, summaUSD,
                            nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
-    PROPERTIES(m) NEWSESSION NEW, EDIT
+    PROPERTIES(m) NEWSESSION EDIT, NEW 
     PROPERTIES showRegisterAccountingSmall() TOOLBAR DRAW m
     PROPERTIES recalculateBalance() TOOLBAR DRAW m
     PROPERTIES recalculateSummaUSD() TOOLBAR DRAW m
     PROPERTIES importData() TOOLBAR DRAW m
-    PROPERTIES(m) deleteInMoneyMove TOOLBAR LAST 
+    PROPERTIES(m) deleteInMoneyMove TOOLBAR LAST
+    PROPERTIES(m) addFromCurrent BEFORE deleteInMoneyMove(m) TOOLBAR DRAW m
     ORDERS date(m), codeOperation(m) 
     FILTERS filterDateFrom(m),
         filterDateTo(m),
