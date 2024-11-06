@@ -29,9 +29,8 @@ currency = DATA Currency (RegisterAccounting) NONULL;
 shortNameCurrency 'Валюта' (RegisterAccounting r) = shortName(currency(r));
 isNoCash 'Безналичный' = DATA BOOLEAN (RegisterAccounting);
 koeff 'Коэффициент' = DATA NUMERIC[12,2] (RegisterAccounting) ;
-// 0 - внутренний, >0 - внешний
+// 1 - внутренний, > 1 - внешний
 isInternal 'Внутр./внеш.' = DATA INTEGER (RegisterAccounting);
-//dateTimeKorr 'Дата/время посл. корр-ки' = DATA DATETIME (RegisterAccounting);
 dateTimeBalance 'Дата/время расчета остатков' = DATA DATETIME (RegisterAccounting);
 dateTimeSummaUSD 'Дата/время расчета сумм USD' = DATA DATETIME (RegisterAccounting);
 
@@ -71,7 +70,7 @@ FORM editRegisterAccounting 'Регистр учета'
 ;
 
 WHEN LOCAL FORMS editRegisterAccounting SETCHANGED(code(RegisterAccounting r)) AND NOT isInternal(r) DO {
-    isInternal(r) <- 0;
+    isInternal(r) <- 1;
 }
 
 CLASS MoneyMove 'Движение денег';
@@ -154,10 +153,10 @@ EXTEND FORM listRegisterAccounting
     PROPERTIES(r) dateTimeKorr, balance
 ;
 
-//
+// справка с остатками
 FORM listRegisterAccountingSmall 'Регистры учета'
     OBJECTS r = RegisterAccounting
-    PROPERTIES(r) READONLY code, name, shortNameCurrency, balance, balanceUSD
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, balance, balanceUSD, dateTimeKorr, dateTimeBalance
     ORDERS name(r)
 ;
 DESIGN listRegisterAccountingSmall {
@@ -375,7 +374,7 @@ FORM viewMoneyMove 'Движение денег'
     PROPERTIES importData() TOOLBAR DRAW m
     PROPERTIES(m) deleteInMoneyMove TOOLBAR LAST
     PROPERTIES(m) addFromCurrent BEFORE deleteInMoneyMove(m) TOOLBAR DRAW m
-    ORDERS date(m), codeOperation(m) 
+    ORDERS date(m), codeOperation(m)
     FILTERS filterDateFrom(m),
         filterDateTo(m),
         filterRegisterAccounting(m),
@@ -438,6 +437,133 @@ WHEN SET(MoneyMove m IS MoneyMove) DO {
     userEntry(m) <- currentUser();
 }
 
+///// Отчёт в Excel по остаткам на регистрах учета за год по месяцам
+nameMonth 'Месяц' (INTEGER m) = CASE EXCLUSIVE
+    WHEN m == 1  THEN 'Январь'
+    WHEN m == 2  THEN 'Февраль'
+    WHEN m == 3  THEN 'Март'
+    WHEN m == 4  THEN 'Апрель'
+    WHEN m == 5  THEN 'Май'
+    WHEN m == 6  THEN 'Июнь'
+    WHEN m == 7  THEN 'Июль'
+    WHEN m == 8  THEN 'Август'
+    WHEN m == 9  THEN 'Сентябрь'
+    WHEN m == 10 THEN 'Октябрь'
+    WHEN m == 11 THEN 'Ноябрь'
+    WHEN m == 12 THEN 'Декабрь'
+    MATERIALIZED;
+
+isInternalParam 'внутренний/внешний' = DATA LOCAL NESTED INTEGER ();
+yearParam 'год' = DATA LOCAL NESTED STRING[5] ();
+
+balance 'Остаток на конец месяца' (RegisterAccounting r, INTEGER mes, INTEGER year) = 
+    GROUP LAST balance(MoneyMove m) IF date(m)<=lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + year, 'DDMMYYYY')) ORDER date(m), codeOperation(m), m BY registerAccounting(m);
+
+balance 'Остаток на конец месяца' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting, INTEGER);
+deltaBalance 'Разница к пред.месяцу' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting, INTEGER);
+
+balanceUSD 'Остаток на конец месяца USD' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting, INTEGER);
+balanceUSD 'Остаток на конец месяца USD, итог' = DATA LOCAL NESTED NUMERIC[14,2] (INTEGER);
+
+balanceBeginYear 'Остаток на начало года' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting);
+balanceBeginYearUSD 'Остаток на начало года, USD' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting);
+balanceBeginYearUSD 'Остаток на начало года, USD, итог' = DATA LOCAL NESTED NUMERIC[14,2] ();
+deltaBalanceUSD 'Разница к пред.месяцу, USD, итог' = DATA LOCAL NESTED NUMERIC[14,2] (INTEGER);
+
+FORM reportPerYear 'Отчет за год по регистрам учета'
+    OBJECTS r = RegisterAccounting
+    PROPERTIES(r) code, name, dateTimeKorr, dateTimeBalance, balanceBeginYear, balanceBeginYearUSD
+    PROPERTIES() balanceBeginYearUSD DRAW r, yearParam DRAW r
+    
+    OBJECTS mes = INTEGER
+    PROPERTIES balance(r,mes) COLUMNS(mes) HEADER nameMonth(mes) FOOTER balanceUSD(mes)
+    PROPERTIES deltaBalance(r,mes) COLUMNS(mes)
+    PROPERTIES balanceUSD(r,mes) COLUMNS(mes)
+    PROPERTIES deltaBalanceUSD(mes) COLUMNS(mes)
+    
+    FILTERS iterate(mes,1,12),
+            isInternal(r)=isInternalParam() OR isInternalParam()=0
+    
+    OBJECTS a = LegalEntity.Account
+    PROPERTIES(a) number, balance, balanceCurrency, note
+    FILTERS id(legalEntity(a))=='1' AND active(a) AND balance(a)
+;
+
+fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInternal) {
+    
+    isInternalParam() <- isInternal;
+    yearParam() <- toChar(year,'9999');
+    
+    balanceBeginYear(RegisterAccounting r) <- NULL ;
+    balance(RegisterAccounting r, INTEGER mes) <- NULL ;
+    deltaBalance(RegisterAccounting r, INTEGER mes) <- NULL ;
+    balanceUSD(RegisterAccounting r, INTEGER mes) <- NULL ;
+    balanceUSD(INTEGER mes) <- NULL ;
+    deltaBalanceUSD(INTEGER mes) <- NULL ;
+    
+    // остатки на начало года
+    balanceBeginYear(RegisterAccounting r) <- balance(r,12,year-1) IF isInternal(r)=isInternal OR isInternal=0;
+    
+    balanceBeginYearUSD(RegisterAccounting r) <- CASE
+        WHEN shortName(currency(r)) = 'USD' THEN balanceBeginYear(r) * (OVERRIDE koeff(r),1.0)
+        WHEN shortName(currency(r)) = 'BYN' THEN round2(balanceBeginYear(r) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate())) * (OVERRIDE koeff(r),1.0)
+        ELSE round2(balanceBeginYear(r) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), currentDate()) * 
+             rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate())) * (OVERRIDE koeff(r),1.0) ;
+    
+    balanceBeginYearUSD() <- GROUP SUM balanceBeginYearUSD(RegisterAccounting r) ;
+    
+    // остатки по месяцам
+    balance(RegisterAccounting r, INTEGER mes) <- balance(r,mes,year) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0);
+    
+    deltaBalance(RegisterAccounting r, INTEGER mes) <- (IF mes > 1 THEN balance(r,mes,year) (-) balance(r,mes-1,year)
+        ELSE balance(r,mes,year) (-) balanceBeginYear(r)) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0);
+    
+    balanceUSD(RegisterAccounting r, INTEGER mes) <- CASE
+        WHEN shortName(currency(r)) = 'USD' THEN balance(r,mes,year) * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
+        WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r,mes,year) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate()))
+             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
+        ELSE round2(balance(r,mes,year) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), currentDate()) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate()))
+             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0) ;
+    
+    // итоги
+    balanceUSD(INTEGER mes) <- GROUP SUM balanceUSD(RegisterAccounting r, mes) ;
+    deltaBalanceUSD(INTEGER mes) <- (IF mes > 1 THEN balanceUSD(mes) (-) balanceUSD(mes-1)
+        ELSE balanceUSD(mes) (-) balanceBeginYearUSD()) IF iterate(mes,1,12);
+    
+    PRINT reportPerYear XLSX ;
+}
+
+FORM reportPerYearParameters 'Отчет за год по регистрам учета'
+    OBJECTS year = INTEGER PANEL
+    PROPERTIES(year) y = VALUE
+    OBJECTS isInternal = INTEGER PANEL
+    PROPERTIES(isInternal) internal = VALUE
+    
+    PROPERTIES fillReportPerYear(year, isInternal)
+    
+    EVENTS ON INIT {
+        SEEK reportPerYearParameters.year = extractYear(currentDate());
+        SEEK reportPerYearParameters.isInternal = 0;
+    }
+;
+
+DESIGN reportPerYearParameters {
+    NEW report {
+        fill = 1;
+        NEW params {
+            MOVE PROPERTY(y) {caption = 'Год';}
+            MOVE PROPERTY(internal) {caption = 'Внутренний/внешний (0 - все)';} 
+        }
+        MOVE PROPERTY(fillReportPerYear(year, isInternal));
+    }
+    MOVE TOOLBARBOX;
+}
+
+NAVIGATOR {
+    finance {
+        NEW reportPerYearParameters;
+    }
+}
 
 //// Первоначальный импорт из журнала "Движение финансов"
 //initialImport 'Первоначальный импорт' {
