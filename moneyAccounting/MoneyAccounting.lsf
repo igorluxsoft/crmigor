@@ -188,9 +188,27 @@ recalculateBalance 'Перерасчет остатков' () {
     }
 }
 
+/// Перерасчет сумм USD
+dateStart 'Дата начала перерасчета' = DATA LOCAL DATE ();
+isEmpty 'Только незаполненные' = DATA LOCAL BOOLEAN ();
+
+FORM paramRecalculateSummaUSD 'Параметры для перерасчета сумм USD'
+    PROPERTIES() dateStart, isEmpty
+    
+    OBJECTS r = RegisterAccounting
+    PROPERTIES(r) select
+    PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
+    PROPERTIES selectAllRegisterAccounting() TOOLBAR, unSelectAllRegisterAccounting() TOOLBAR
+    LIST RegisterAccounting OBJECT r
+    ORDERS name(r)
+;
+
 recalculateSummaUSD 'Перерасчет сумм USD' () {
-    DIALOG listRegisterAccounting OBJECTS r INPUT DO {
-        NEWSESSION {
+    dateStart() <- sumMonth(currentDate(),-3);
+    isEmpty() <- TRUE;
+    
+    DIALOG paramRecalculateSummaUSD OBJECTS r INPUT DO {
+        NEWSESSION NESTED LOCAL {
             IF NOT countSelectRegisterAccounting() THEN select(r) <- TRUE ;
             // тип обмена - бел. рубль
             LOCAL tBYN = TypeExchange ();
@@ -199,7 +217,7 @@ recalculateSummaUSD 'Перерасчет сумм USD' () {
             LOCAL s = NUMERIC[18,6] ();
             
             FOR select(RegisterAccounting ra) DO {
-                FOR registerAccounting(MoneyMove m)==ra DO {
+                FOR registerAccounting(MoneyMove m)==ra AND date(m)>=dateStart() AND (NOT summaUSD(m) OR NOT isEmpty()) DO {
                     IF shortName(currency(ra)) = 'USD' THEN summaUSD(m) <- summa(m);
                     ELSE {
                         IF shortName(currency(ra)) = 'BYN' THEN s() <- summa(m);
@@ -382,7 +400,7 @@ FORM viewMoneyMove 'Движение денег'
         filterCustomer(m),
         filterEmployee(m)
     
-    OBJECTS mm = MoneyMove PANEL
+    OBJECTS mm = MoneyMove PANEL    
         PROPERTIES(mm) READONLY note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
         FILTERS mm=m
 ;
@@ -485,7 +503,7 @@ FORM reportPerYear 'Отчет за год по регистрам учета'
             isInternal(r)=isInternalParam() OR isInternalParam()=0
     
     OBJECTS a = LegalEntity.Account
-    PROPERTIES(a) number, balance, balanceCurrency, note
+    PROPERTIES(a) number, nameBank, balance, balanceCurrency, note
     FILTERS id(legalEntity(a))=='1' AND active(a) AND balance(a)
 ;
 

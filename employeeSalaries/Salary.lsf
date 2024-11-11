@@ -826,7 +826,7 @@ importTransfers 'Импорт выплат'(){
                     month(t) <- month(nummes());
                     year(t) <- numyear();
                     operation(t) <- uniqueCode(operation(), '2');
-                    registerAccounting(t) <- registerAccounting('BYN/BN');
+                    registerAccounting(t) <- registerAccounting('BYN/BN  LS');
                     qcount() <- qcount() + 1;
                     qsum() <- qsum() + sum(i);
                 }
