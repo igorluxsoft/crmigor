@@ -1,6 +1,6 @@
 MODULE MoneyAccounting;
 
-REQUIRE MoveMoneyOpreration, Payment, Expense;
+REQUIRE MoveMoneyOpreration, Payment, Expense, Time;
 //REQUIRE MoveMoney;
 
 NAMESPACE MoneyAccounting;
@@ -490,7 +490,7 @@ deltaBalanceUSD 'Разница к пред.месяцу, USD, итог' = DATA 
 
 FORM reportPerYear 'Отчет за год по регистрам учета'
     OBJECTS r = RegisterAccounting
-    PROPERTIES(r) code, name, dateTimeKorr, dateTimeBalance, balanceBeginYear, balanceBeginYearUSD
+    PROPERTIES(r) code, name, koeff, dateTimeKorr, dateTimeBalance, balanceBeginYear, balanceBeginYearUSD
     PROPERTIES() balanceBeginYearUSD DRAW r, yearParam DRAW r
     
     OBJECTS mes = INTEGER
@@ -524,9 +524,10 @@ fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInte
     
     balanceBeginYearUSD(RegisterAccounting r) <- CASE
         WHEN shortName(currency(r)) = 'USD' THEN balanceBeginYear(r) * (OVERRIDE koeff(r),1.0)
-        WHEN shortName(currency(r)) = 'BYN' THEN round2(balanceBeginYear(r) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate())) * (OVERRIDE koeff(r),1.0)
-        ELSE round2(balanceBeginYear(r) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), currentDate()) * 
-             rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate())) * (OVERRIDE koeff(r),1.0) ;
+        WHEN shortName(currency(r)) = 'BYN' THEN round2(balanceBeginYear(r) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')),
+            sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1))) * (OVERRIDE koeff(r),1.0)
+        ELSE round2(balanceBeginYear(r) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1)) * 
+             rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1))) * (OVERRIDE koeff(r),1.0) ;
     
     balanceBeginYearUSD() <- GROUP SUM balanceBeginYearUSD(RegisterAccounting r) ;
     
@@ -538,9 +539,10 @@ fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInte
     
     balanceUSD(RegisterAccounting r, INTEGER mes) <- CASE
         WHEN shortName(currency(r)) = 'USD' THEN balance(r,mes,year) * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
-        WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r,mes,year) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate()))
+        WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r,mes,year) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
              * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
-        ELSE round2(balance(r,mes,year) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), currentDate()) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate()))
+        ELSE round2(balance(r,mes,year) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))) 
+             * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
              * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0) ;
     
     // итоги

@@ -30,6 +30,7 @@
 	<field name="balanceUSD(r,mes)" class="java.math.BigDecimal"/>
 	<field name="yearParam()" class="java.lang.String"/>
 	<field name="deltaBalanceUSD(mes)" class="java.math.BigDecimal"/>
+	<field name="koeff(r)" class="java.math.BigDecimal"/>
 	<pageHeader>
 		<band height="58">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -100,7 +101,7 @@
 				<textElement textAlignment="Left">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{code(r)}+" "+$F{name(r)}+" , корр-ка: "+($F{dateTimeKorr(r)}==null ? "<пусто>" : $F{dateTimeKorr(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", расчет:  "+($F{dateTimeBalance(r)}==null ? "<пусто>" : $F{dateTimeBalance(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{code(r)}+" "+$F{name(r)}+" , корр-ка: "+($F{dateTimeKorr(r)}==null ? "<пусто>" : $F{dateTimeKorr(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", расчет:  "+($F{dateTimeBalance(r)}==null ? "<пусто>" : $F{dateTimeBalance(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", коэф-т:  "+($F{koeff(r)}==null ? "<пусто>" :lsfusion.base.BaseUtils.bigDecimalToString("##0.00",$F{koeff(r)}))]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="18" width="70" height="18" uuid="3dfe9fdb-25ab-405f-b6cb-f3236f8af2a5">
