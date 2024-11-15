@@ -50,7 +50,7 @@ selectAllRegisterAccounting 'Отметить все' () {
     select(RegisterAccounting r) <- TRUE WHERE r IS RegisterAccounting;
 }
 
-unSelectAllRegisterAccounting 'Сбросить все' () {
+unSelectAllRegisterAccounting 'Разотметить все' () {
     select(RegisterAccounting r) <- NULL WHERE r IS RegisterAccounting;
 }
 
@@ -99,6 +99,16 @@ nameUserEntry 'Создан пользователем' (MoneyMove m) = name(use
 dateTimeKorr 'Время корр-ки' = DATA DATETIME (MoneyMove);
 userKorr 'Корр-ка пользователем' = DATA Employee (MoneyMove);
 nameUserKorr 'Корр-ка пользователем' (MoneyMove m) = name(userKorr(m)) CHARWIDTH 5;
+file = DATA FILE (MoneyMove);
+
+monthNumber 'Месяц' (MoneyMove m) = extractMonthNumber(date(m));
+monthName 'Месяц' (MoneyMove m) = extractMonthName(date(m));
+quarter 'Квартал' (MoneyMove m) = CASE WHEN monthNumber(m) < 4 THEN 1
+    WHEN monthNumber(m) <  7 AND monthNumber(m) > 3 THEN 2
+    WHEN monthNumber(m) < 10 AND monthNumber(m) > 6 THEN 3
+    ELSE 4 ;
+year 'Год' (MoneyMove m) = extractYear(date(m));
+
 
 in 'Отм.' = DATA LOCAL BOOLEAN (MoneyMove);
 
@@ -140,7 +150,11 @@ WHEN LOCAL FORMS editMoneyMove (CHANGED(date(MoneyMove m)) OR CHANGED(registerAc
 }
 
 dateTimeKorr 'Дата/время посл. корр-ки' = GROUP LAST dateTimeKorr(MoneyMove m) ORDER dateTimeKorr(m) BY registerAccounting(m);
+
+balance 'Остаток на дату, на конец дня' = GROUP LAST balance(MoneyMove m) ORDER date(m), codeOperation(m), m WHERE date(m) <= DATE d BY registerAccounting(m),d;
+
 balance 'Текущий остаток' = GROUP LAST balance(MoneyMove m) ORDER date(m), codeOperation(m), m BY registerAccounting(m);
+
 balanceUSD 'Текущий остаток, USD' = CASE 
     WHEN shortName(currency(RegisterAccounting r)) = 'USD' THEN balance(r)
     WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), currentDate()))
@@ -199,7 +213,6 @@ FORM paramRecalculateSummaUSD 'Параметры для перерасчета 
     PROPERTIES(r) select
     PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
     PROPERTIES selectAllRegisterAccounting() TOOLBAR, unSelectAllRegisterAccounting() TOOLBAR
-    LIST RegisterAccounting OBJECT r
     ORDERS name(r)
 ;
 
@@ -301,8 +314,23 @@ importData 'Импорт данных' () {
         LOCAL mess = STRING ();
         
         DELETE MoneyMove m WHERE m IS MoneyMove AND date(m) >= dateimp AND isNoCash(registerAccounting(m));
+        
         importDataPayment(dateimp);
         importDataExpense(dateimp);
+        
+        // Перерасчет остатков по безналичным регистрам учета, начиная с даты импорта
+        LOCAL bal = NUMERIC[12,2] ();
+
+        FOR isNoCash(RegisterAccounting ra) DO {
+            bal() <- balance(ra, sum(dateimp,-1));
+            FOR registerAccounting(MoneyMove m)==ra AND date(m)>=dateimp ORDER date(m), codeOperation(m), m DO {
+                bal() <- bal() (+) summa(m);
+                balance(m) <- bal();
+            }
+            dateTimeBalance(ra) <- currentDateTime();
+        }
+        //
+        
         IF length(messPayment()) > 5 OR length(messExpense()) > 5 THEN {
             IF length(messPayment()) > 5 THEN messPayment() <- '    ПЛАТЕЖИ :\n' + messPayment();
             IF length(messExpense()) > 5 THEN messExpense() <- '\n\n    РАСХОДЫ :\n' + messExpense();
@@ -355,6 +383,22 @@ deleteInMoneyMove 'Удалить' (MoneyMove m)  {
     }
 } IMAGE 'delete.png';
 
+loadFile 'Загрузить' (MoneyMove m) {
+    INPUT f = FILE DO {
+        NEWSESSION {
+            file(m) <- f;
+            APPLY ;
+        }
+    }
+}
+openFile 'Открыть' (MoneyMove m) { open(file(m)); }
+
+deleteFile 'Удалить' (MoneyMove m) {
+    NEWSESSION {
+        file(m) <- NULL;
+        APPLY ;
+    }    
+} CONFIRM;
 
 filterMoneyMoveDateFrom 'Дата с' = DATA LOCAL DATE ();
 filterDateFrom (MoneyMove m) = date(m) >= filterMoneyMoveDateFrom() OR (m IS MoneyMove AND NOT filterMoneyMoveDateFrom());
@@ -384,8 +428,10 @@ FORM viewMoneyMove 'Движение денег'
     OBJECTS m = MoneyMove LAST 
     PROPERTIES(m) in
     PROPERTIES(m) READONLY date, codeOperation, nameOperation, codeRegisterAccounting, nameRegisterAccounting, summa, balance, shortNameCurrency, summaUSD,
-                           nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
+                           nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr,
+                           monthNumber, monthName, quarter, year
     PROPERTIES(m) NEWSESSION EDIT, NEW 
+    PROPERTIES(m) loadFile READONLYIF file(m), openFile READONLYIF NOT file(m), deleteFile READONLYIF NOT file(m)
     PROPERTIES showRegisterAccountingSmall() TOOLBAR DRAW m
     PROPERTIES recalculateBalance() TOOLBAR DRAW m
     PROPERTIES recalculateSummaUSD() TOOLBAR DRAW m
@@ -428,16 +474,28 @@ DESIGN viewMoneyMove {
                 MOVE PROPERTY(nameUserKorr(mm)) {caption='Пользователь';}
             }
         }
-        NEW topFilters {
-            caption = 'Фильтры';
+        NEW headerBox2 {
             horizontal = TRUE;
             alignment = STRETCH;
-            MOVE PROPERTY (filterMoneyMoveDateFrom());
-            MOVE PROPERTY (filterMoneyMoveDateTo());
-            MOVE PROPERTY(nameFilterRegisterAccounting());
-            MOVE PROPERTY (nameFilterOperation());
-            MOVE PROPERTY (nameFilterCustomer());
-            MOVE PROPERTY(nameFilterEmployee());
+            NEW topFilters {
+                caption = 'Фильтры';
+                fill = 1;
+                horizontal = TRUE;
+                alignment = STRETCH;
+                MOVE PROPERTY (filterMoneyMoveDateFrom());
+                MOVE PROPERTY (filterMoneyMoveDateTo());
+                MOVE PROPERTY(nameFilterRegisterAccounting());
+                MOVE PROPERTY (nameFilterOperation());
+                MOVE PROPERTY (nameFilterCustomer());
+                MOVE PROPERTY(nameFilterEmployee());
+            }
+            NEW loadFile {
+                caption = 'Файл';
+                horizontal = TRUE;
+                MOVE PROPERTY (loadFile(m));
+                MOVE PROPERTY (openFile(m));
+                MOVE PROPERTY (deleteFile(m));
+            }
         }
         MOVE BOX(m);
     }
@@ -482,15 +540,17 @@ deltaBalance 'Разница к пред.месяцу' = DATA LOCAL NESTED NUMER
 
 balanceUSD 'Остаток на конец месяца USD' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting, INTEGER);
 balanceUSD 'Остаток на конец месяца USD, итог' = DATA LOCAL NESTED NUMERIC[14,2] (INTEGER);
+rateUSD 'Курс на конец месяца USD' = DATA LOCAL NESTED NUMERIC[20,13] (RegisterAccounting, INTEGER);
 
 balanceBeginYear 'Остаток на начало года' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting);
 balanceBeginYearUSD 'Остаток на начало года, USD' = DATA LOCAL NESTED NUMERIC[14,2] (RegisterAccounting);
 balanceBeginYearUSD 'Остаток на начало года, USD, итог' = DATA LOCAL NESTED NUMERIC[14,2] ();
+rateBeginYearUSD 'Курс на начало года USD' = DATA LOCAL NESTED NUMERIC[20,13] (RegisterAccounting);
 deltaBalanceUSD 'Разница к пред.месяцу, USD, итог' = DATA LOCAL NESTED NUMERIC[14,2] (INTEGER);
 
 FORM reportPerYear 'Отчет за год по регистрам учета'
     OBJECTS r = RegisterAccounting
-    PROPERTIES(r) code, name, koeff, dateTimeKorr, dateTimeBalance, balanceBeginYear, balanceBeginYearUSD
+    PROPERTIES(r) code, name, koeff, dateTimeKorr, dateTimeBalance, balanceBeginYear, balanceBeginYearUSD, rateBeginYearUSD
     PROPERTIES() balanceBeginYearUSD DRAW r, yearParam DRAW r
     
     OBJECTS mes = INTEGER
@@ -498,6 +558,7 @@ FORM reportPerYear 'Отчет за год по регистрам учета'
     PROPERTIES deltaBalance(r,mes) COLUMNS(mes)
     PROPERTIES balanceUSD(r,mes) COLUMNS(mes)
     PROPERTIES deltaBalanceUSD(mes) COLUMNS(mes)
+    PROPERTIES rateUSD(r,mes) COLUMNS(mes)
     
     FILTERS iterate(mes,1,12),
             isInternal(r)=isInternalParam() OR isInternalParam()=0
@@ -513,21 +574,26 @@ fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInte
     yearParam() <- toChar(year,'9999');
     
     balanceBeginYear(RegisterAccounting r) <- NULL ;
+    balanceBeginYearUSD(RegisterAccounting r) <- NULL ;
     balance(RegisterAccounting r, INTEGER mes) <- NULL ;
     deltaBalance(RegisterAccounting r, INTEGER mes) <- NULL ;
     balanceUSD(RegisterAccounting r, INTEGER mes) <- NULL ;
+    rateUSD(RegisterAccounting r, INTEGER mes) <- NULL ;
     balanceUSD(INTEGER mes) <- NULL ;
     deltaBalanceUSD(INTEGER mes) <- NULL ;
+    rateBeginYearUSD(RegisterAccounting r) <- NULL ;
     
     // остатки на начало года
     balanceBeginYear(RegisterAccounting r) <- balance(r,12,year-1) IF isInternal(r)=isInternal OR isInternal=0;
-    
-    balanceBeginYearUSD(RegisterAccounting r) <- CASE
-        WHEN shortName(currency(r)) = 'USD' THEN balanceBeginYear(r) * (OVERRIDE koeff(r),1.0)
-        WHEN shortName(currency(r)) = 'BYN' THEN round2(balanceBeginYear(r) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')),
-            sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1))) * (OVERRIDE koeff(r),1.0)
-        ELSE round2(balanceBeginYear(r) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1)) * 
-             rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1))) * (OVERRIDE koeff(r),1.0) ;
+
+    rateBeginYearUSD(RegisterAccounting r) <- CASE
+        WHEN shortName(currency(r)) = 'USD' THEN 1.0
+        WHEN shortName(currency(r)) = 'BYN' THEN rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1))
+        ELSE rateOn(typeExchange('НБРБ (BYN)'), currency(r), sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1)) *
+            rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), sum(toDateFormat('0101' + STRING[4](year), 'DDMMYYYY'),-1))
+        IF (isInternal(r)=isInternal OR isInternal=0);
+
+    balanceBeginYearUSD(RegisterAccounting r) <- round2(balanceBeginYear(r) * rateBeginYearUSD(r) * (OVERRIDE koeff(r),1.0)) IF (isInternal(r)=isInternal OR isInternal=0);
     
     balanceBeginYearUSD() <- GROUP SUM balanceBeginYearUSD(RegisterAccounting r) ;
     
@@ -536,15 +602,24 @@ fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInte
     
     deltaBalance(RegisterAccounting r, INTEGER mes) <- (IF mes > 1 THEN balance(r,mes,year) (-) balance(r,mes-1,year)
         ELSE balance(r,mes,year) (-) balanceBeginYear(r)) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0);
-    
-    balanceUSD(RegisterAccounting r, INTEGER mes) <- CASE
-        WHEN shortName(currency(r)) = 'USD' THEN balance(r,mes,year) * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
-        WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r,mes,year) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
-             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
-        ELSE round2(balance(r,mes,year) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))) 
-             * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
-             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0) ;
-    
+
+    rateUSD(RegisterAccounting r, INTEGER mes) <- CASE
+        WHEN shortName(currency(r)) = 'USD' THEN 1.0  IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
+        WHEN shortName(currency(r)) = 'BYN' THEN rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY')))
+            IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
+        ELSE rateOn(typeExchange('НБРБ (BYN)'), currency(r), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY')))
+            * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY')))
+            IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0);
+
+    balanceUSD(RegisterAccounting r, INTEGER mes) <- round2(balance(r,mes,year) * rateUSD(r,mes) * (OVERRIDE koeff(r),1.0)) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0);
+//    balanceUSD(RegisterAccounting r, INTEGER mes) <- CASE
+//        WHEN shortName(currency(r)) = 'USD' THEN balance(r,mes,year) * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
+//        WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r,mes,year) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
+//             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
+//        ELSE round2(balance(r,mes,year) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))) 
+//             * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
+//             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0) ;
+//    
     // итоги
     balanceUSD(INTEGER mes) <- GROUP SUM balanceUSD(RegisterAccounting r, mes) ;
     deltaBalanceUSD(INTEGER mes) <- (IF mes > 1 THEN balanceUSD(mes) (-) balanceUSD(mes-1)
