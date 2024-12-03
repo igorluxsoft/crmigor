@@ -1,0 +1,346 @@
+MODULE CopyTables;
+
+REQUIRE Salary;
+
+NAMESPACE CopyTables;
+
+dateTimeCopySalary 'Дата копии таблиц <Зарплата>' = DATA DATETIME ();
+dateTimeCopyMoneyAccounting 'Дата копии таблиц <Движение денег>' = DATA DATETIME ();
+
+isSalary 'Зарплата (3 таблицы)' = DATA LOCAL NESTED BOOLEAN ();
+isMoneyAccounting 'Движение денег (2 таблицы)' = DATA LOCAL NESTED BOOLEAN ();
+strHelp '' = DATA LOCAL NESTED TEXT ();
+
+FORM inputParameters 'Копирование таблиц'
+    PROPERTIES() isSalary, isMoneyAccounting, strHelp
+;
+
+DESIGN inputParameters {
+    OBJECTS {
+        horizontal = FALSE;
+        MOVE PROPERTY (isSalary());
+        MOVE PROPERTY (isMoneyAccounting());
+        NEW cnt {
+            fill = 1;
+            MOVE PROPERTY (strHelp()) {background = RGB(204, 255, 255); charHeight = 3;}
+        }
+    }
+}
+
+
+///// Таблицы <Зарплата>
+CLASS ReportingMonthCopy 'Отчетный месяц (копия)';
+month 'Месяц' = DATA Month (ReportingMonthCopy) ;
+year 'Год' = DATA INTEGER (ReportingMonthCopy) ;
+closed 'Закрыт' = DATA BOOLEAN (ReportingMonthCopy);
+curRate 'Курс обмена, USD' =  DATA NUMERIC[20,13] (ReportingMonthCopy);
+sumBonus 'Премия' =  DATA NUMERIC[12,2] (ReportingMonthCopy);
+note 'Примечание' = DATA STRING (ReportingMonthCopy);
+
+nameMonth 'Месяц' (ReportingMonthCopy r) = staticCaption(month(r));
+
+
+CLASS TransferCopy 'Выплата (копия)';
+number 'Номер документа' = DATA STRING[15] (TransferCopy) CHARWIDTH 5;
+date 'Дата документа' = DATA DATE (TransferCopy);
+month 'Месяц' = DATA Month (TransferCopy) ;
+year 'Год' = DATA INTEGER (TransferCopy) ;
+operation 'Операция' = DATA MoveMoneyOpreration (TransferCopy) ;
+employee 'Сотрудник' = DATA Employee (TransferCopy) ;
+sum 'Сумма' = DATA NUMERIC[12,2] (TransferCopy);
+note 'Примечание' = DATA STRING (TransferCopy);
+registerAccounting 'Регистр учета' = DATA RegisterAccounting (TransferCopy) ;
+typePayment 'Вид платежа' = DATA TypePayment (TransferCopy);
+
+numberMonth 'Месяц' (TransferCopy t) = number(month(t));
+nameMonth 'Месяц' (TransferCopy t) = staticCaption(month(t)) CHARWIDTH 5;
+nameOperation 'Операция' (TransferCopy t) = name(operation(t)) CHARWIDTH 5;
+codeOperation 'Код операции' (TransferCopy t) = code(operation(t)) CHARWIDTH 5;
+nameEmployee 'Сотрудник' (TransferCopy t) = fullName(employee(t)) CHARWIDTH 5;
+codeRegisterAccounting 'Регистр учета' (TransferCopy t) = code(registerAccounting(t));
+nameTypePayment 'Вид платежа' (TransferCopy t) = name(typePayment(t));
+
+
+CLASS SalaryCopy 'Зарплата сотрудников (копия)';
+month 'Месяц' = DATA Month (SalaryCopy) ;
+year 'Год' = DATA INTEGER (SalaryCopy)  ;
+employee 'Сотрудник' = DATA Employee (SalaryCopy) ;
+sumSalary 'Оклад' = DATA NUMERIC[12,2] (SalaryCopy);
+sumBonus1 'Премия-1' = DATA NUMERIC[12,2] (SalaryCopy);
+sumBonus2 'Премия-2' = DATA NUMERIC[12,2] (SalaryCopy);
+sumBonus3 'Премия-3' = DATA NUMERIC[12,2] (SalaryCopy);
+sumBonusQuarter 'Премия за квартал' = DATA NUMERIC[12,2] (SalaryCopy);
+ktu 'КТУ' = DATA NUMERIC[7,2] (SalaryCopy);
+sumFine1 'Штраф-1'   = DATA NUMERIC[12,2] (SalaryCopy);
+sumFine2 'Штраф-2'   = DATA NUMERIC[12,2] (SalaryCopy);
+sumFine3 'Штраф-3'   = DATA NUMERIC[12,2] (SalaryCopy);
+note1 'Примечание-1' = DATA STRING (SalaryCopy);
+note2 'Примечание-2' = DATA STRING (SalaryCopy);
+sumPay 'Сумма к выплате' = DATA NUMERIC[12,2] (SalaryCopy);
+sumPayUSD 'Сумма к выплате, USD' = DATA NUMERIC[12,2] (SalaryCopy);
+payExtra 'Доплатить (в бухгалтерию)' = DATA NUMERIC[12,2] (SalaryCopy);
+payExtraCash 'Доплатить наличными' = DATA NUMERIC[12,2] (SalaryCopy);
+deltaPay 'Отклонение' = DATA NUMERIC[12,2] (SalaryCopy);
+deltaReal 'Отклонение реальное' = DATA NUMERIC[12,2] (SalaryCopy);
+isReturn 'Возврат' = DATA BOOLEAN (SalaryCopy);
+
+nameMonth 'Месяц' (SalaryCopy s) = staticCaption(month(s))  CHARWIDTH 7;
+nameEmployee 'Сотрудник' (SalaryCopy s) = fullName(employee(s)) CHARWIDTH 15;
+sumBonus 'Премия' (SalaryCopy s) = sumBonus1(s) (+) sumBonus2(s) (+) sumBonus3(s) (+) sumBonusQuarter(s);
+sumFine 'Штраф' (SalaryCopy s) = sumFine1(s) (+) sumFine2(s) (+) sumFine3(s);
+
+///// Таблицы <Движение денег>
+CLASS RegisterAccountingCopy 'Регистр учета (копия)';
+code 'Код' = DATA STRING[20] (RegisterAccountingCopy) CHARWIDTH 5;
+name 'Название' = DATA STRING[100] (RegisterAccountingCopy) CHARWIDTH 10;
+currency = DATA Currency (RegisterAccountingCopy) ;
+isNoCash 'Безналичный' = DATA BOOLEAN (RegisterAccountingCopy);
+koeff 'Коэффициент' = DATA NUMERIC[12,2] (RegisterAccountingCopy) ;
+isInternal 'Внутр./внеш.' = DATA INTEGER (RegisterAccountingCopy);
+dateTimeBalance 'Дата/время расчета остатков' = DATA DATETIME (RegisterAccountingCopy);
+dateTimeSummaUSD 'Дата/время расчета сумм USD' = DATA DATETIME (RegisterAccountingCopy);
+
+
+CLASS MoneyMoveCopy 'Движение денег (копия)';
+registerAccounting 'Регистр учета' = DATA RegisterAccounting (MoneyMoveCopy);
+operation 'Операция' = DATA MoveMoneyOpreration (MoneyMoveCopy);
+date 'Дата' = DATA DATE (MoneyMoveCopy);
+summa 'Сумма' = DATA NUMERIC[14,2] (MoneyMoveCopy);
+summaUSD 'Сумма, USD' = DATA NUMERIC[14,2] (MoneyMoveCopy);
+balance 'Остаток после операции' = DATA NUMERIC[14,2] (MoneyMoveCopy);
+customer 'Клиент' = DATA Customer (MoneyMoveCopy);
+legalEntity 'Организация' = DATA LegalEntity (MoneyMoveCopy);
+employee 'Сотрудник' = DATA Employee (MoneyMoveCopy) ;
+note 'Примечание' = DATA STRING  (MoneyMoveCopy) CHARWIDTH 5;
+note2 'Примечание-2' = DATA STRING  (MoneyMoveCopy) CHARWIDTH 5;
+dateTimeEntry 'Время создания' = DATA DATETIME (MoneyMoveCopy);
+userEntry 'Создан пользователем' = DATA Employee (MoneyMoveCopy);
+dateTimeKorr 'Время корр-ки' = DATA DATETIME (MoneyMoveCopy);
+userKorr 'Корр-ка пользователем' = DATA Employee (MoneyMoveCopy);
+file = DATA FILE (MoneyMoveCopy);
+
+nameRegisterAccounting 'Регистр учета' = name(registerAccounting(MoneyMoveCopy m)) CHARWIDTH 7;
+codeRegisterAccounting 'Регистр учета' = code(registerAccounting(MoneyMoveCopy m)) CHARWIDTH 7;
+shortNameCurrency 'Валюта' = shortNameCurrency(registerAccounting(MoneyMoveCopy m));
+nameOperation 'Операция' = name(operation(MoneyMoveCopy m)) CHARWIDTH 7;
+codeOperation 'Код операции' = code(operation(MoneyMoveCopy m)) CHARWIDTH 3;
+nameCustomer 'Клиент' (MoneyMoveCopy m) = name(customer(m)) CHARWIDTH 5;
+nameLegalEntity 'Организация'(MoneyMoveCopy m) = name(legalEntity(m)) CHARWIDTH 5;
+nameEmployee 'Сотрудник' (MoneyMoveCopy m) = fullName(employee(m)) CHARWIDTH 5;
+nameUserEntry 'Создан пользователем' (MoneyMoveCopy m) = name(userEntry(m)) CHARWIDTH 5;
+nameUserKorr 'Корр-ка пользователем' (MoneyMoveCopy m) = name(userKorr(m)) CHARWIDTH 5;
+/////
+
+
+copyTables 'Копирование таблиц' () {
+    strHelp() <- 'Дата/время последней копии таблиц:\n <Зарплата> - ' + 
+                (IF dateTimeCopySalary() THEN toChar(dateTimeCopySalary(),'DD.MM.YYYY HH24:MI') ELSE 'отсутствует') + '\n<Движение денег> - ' + 
+                (IF dateTimeCopyMoneyAccounting() THEN toChar(dateTimeCopyMoneyAccounting(),'DD.MM.YYYY HH24:MI') ELSE 'отсутствует');
+    
+    DIALOG inputParameters DO NEWSESSION {
+        
+        IF isSalary() THEN {
+            
+            DELETE ReportingMonthCopy a WHERE a IS ReportingMonthCopy; // чистим таблицу с копией  <Отчетный месяц (копия)>
+            
+            FOR ReportingMonth r IS ReportingMonth NEW rc = ReportingMonthCopy DO {
+                month(rc) <- month(r);
+                year(rc) <- year(r)  ;
+                closed(rc) <- closed(r) ;
+                curRate(rc) <- curRate(r) ;
+                sumBonus(rc) <- sumBonus(r) ;
+                note(rc) <- note(r) ;
+            }
+            
+            DELETE TransferCopy t WHERE t IS TransferCopy; // чистим таблицу с копией  <Выплаты (копия)>
+            
+            FOR Transfer t IS Transfer NEW tc = TransferCopy DO {
+                number(tc) <- number(t);
+                date(tc) <- date(t);
+                month(tc) <- month(t);
+                year(tc) <- year(t);
+                operation(tc) <- operation(t);
+                employee(tc) <- employee(t);
+                sum(tc) <- sum(t);
+                note(tc) <- note(t);
+                registerAccounting(tc) <- registerAccounting(t);
+                typePayment(tc) <- typePayment(t);
+            }
+            
+            DELETE SalaryCopy s WHERE s IS SalaryCopy; // чистим таблицу с копией  <Зарплата сотрудников (копия)>
+            
+            FOR Salary s IS Salary NEW sc = SalaryCopy DO {
+                month(sc) <- month(s);
+                year(sc) <- year(s);
+                employee(sc) <- employee(s);
+                sumSalary(sc) <- sumSalary(s);
+                sumBonus1(sc) <- sumBonus1(s);
+                sumBonus2(sc) <- sumBonus2(s);
+                sumBonus3(sc) <- sumBonus3(s);
+                sumBonusQuarter(sc) <- sumBonusQuarter(s);
+                ktu(sc) <- ktu(s);
+                sumFine1(sc) <- sumFine1(s);
+                sumFine2(sc) <- sumFine2(s);
+                sumFine3(sc) <- sumFine3(s);
+                note1(sc) <- note1(s);
+                note2(sc) <- note2(s);
+                sumPay(sc) <- sumPay(s);
+                sumPayUSD(sc) <- sumPayUSD(s);
+                payExtra(sc) <- payExtra(s);
+                payExtraCash(sc) <- payExtraCash(s);
+                deltaPay(sc) <- deltaPay(s);
+                deltaReal(sc) <- deltaReal(s);
+                isReturn(sc) <- isReturn(s);
+            }
+            
+            dateTimeCopySalary() <- currentDateTime();
+        }
+        
+        IF isMoneyAccounting() THEN {
+            
+            DELETE RegisterAccountingCopy r WHERE r IS RegisterAccountingCopy; // чистим таблицу с копией  <Регистр учета (копия)>
+            
+            FOR RegisterAccounting r IS RegisterAccounting NEW rc = RegisterAccountingCopy DO {
+                
+                code(rc) <- code(r);
+                name(rc) <- name(r);
+                currency(rc) <- currency(r);
+                isNoCash(rc) <- isNoCash(r);
+                koeff(rc) <- koeff(r);
+                isInternal(rc) <- isInternal(r);
+                dateTimeBalance(rc) <- dateTimeBalance(r);
+                dateTimeSummaUSD(rc) <- dateTimeSummaUSD(r);
+            }
+            
+            DELETE MoneyMoveCopy m WHERE m IS MoneyMoveCopy; // чистим таблицу с копией  <Движение денег (копия)>
+            
+            FOR MoneyMove m IS MoneyMove NEW mc = MoneyMoveCopy DO {
+                
+                registerAccounting(mc) <- registerAccounting(m);
+                operation(mc) <- operation(m);
+                date(mc) <- date(m);
+                summa(mc) <- summa(m);
+                summaUSD(mc) <- summaUSD(m);
+                balance(mc) <- balance(m);
+                customer(mc) <- customer(m);
+                legalEntity(mc) <- legalEntity(m);
+                employee(mc) <- employee(m);
+                note(mc) <- note(m);
+                note2(mc) <- note2(m);
+                dateTimeEntry(mc) <- dateTimeEntry(m);
+                userEntry(mc) <- userEntry(m);
+                dateTimeKorr(mc) <- dateTimeKorr(m);
+                userKorr(mc) <- userKorr(m);
+                file(mc) <- file(m);
+            }
+            
+            dateTimeCopyMoneyAccounting() <- currentDateTime();
+        }
+        
+        APPLY ;
+        
+        MESSAGE 'Копирование завершено';
+        
+    } ELSE MESSAGE 'Копирование отменено';
+}
+
+
+
+FORM salariesCopy 'Начисление зарплаты (КОПИЯ)'
+    PROPERTIES 'Дата/время копии: ' =dateTimeCopySalary() PANEL 
+    
+    OBJECTS r = ReportingMonthCopy
+    PROPERTIES(r) READONLY nameMonth, year, curRate, sumBonus, closed, note
+    
+    OBJECTS s = SalaryCopy
+    PROPERTIES(s) READONLY  nameEmployee, sumSalary, sumBonus, sumFine, sumPay, sumPayUSD, payExtra, payExtraCash, deltaPay
+    PROPERTIES(s) READONLY  deltaReal, isReturn, note1, note2, ktu
+    PROPERTIES(s) READONLY  nameMonth, year
+    ORDERS nameEmployee(s)
+    FILTERS month(s)==month(r) AND year(s)==year(r)
+    
+    OBJECTS t = TransferCopy LAST
+    PROPERTIES(t) READONLY numberMonth, nameMonth, year, number, date, nameEmployee, codeOperation, nameOperation, sum, note, nameTypePayment, codeRegisterAccounting
+    ORDERS year(t), numberMonth(t), date(t), nameEmployee(t)
+    
+    FILTERGROUP transfer
+        FILTER 'По сотруднику за месяц' employee(t)==employee(s) AND year(t)==year(s) AND month(t)==month(s) DEFAULT
+        FILTER 'По сотруднику' employee(t)==employee(s)
+        FILTER 'За месяц' year(t)==year(r) AND month(t)==month(r)
+;
+
+DESIGN salariesCopy {
+    MOVE BOX(r) {
+        fill=1;
+    }
+    MOVE BOX(s) {fill=10;}
+    MOVE BOX(t) {fill=1;}
+    MOVE TOOLBARBOX;
+}
+
+
+openFile 'Открыть' (MoneyMoveCopy m) { open(file(m)); }
+
+
+FORM viewMoneyMoveCopy 'Движение денег (КОПИЯ)'
+    PROPERTIES 'Дата/время копии: ' =dateTimeCopyMoneyAccounting() PANEL
+    
+    OBJECTS m = MoneyMoveCopy LAST
+    PROPERTIES(m) READONLY date, codeOperation, nameOperation, codeRegisterAccounting, nameRegisterAccounting, summa, balance, shortNameCurrency, summaUSD,
+        nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
+    PROPERTIES(m) openFile READONLYIF NOT file(m)
+    ORDERS date(m), codeOperation(m)
+    
+    OBJECTS mm = MoneyMoveCopy PANEL
+    PROPERTIES(mm) READONLY note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
+    FILTERS mm=m
+
+    OBJECTS r = RegisterAccountingCopy
+    PROPERTIES(r) READONLY code, name, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
+    ORDERS name(r)
+;
+
+DESIGN viewMoneyMoveCopy {
+    OBJECTS {
+        NEW headerBox {
+            horizontal = TRUE;
+            alignment = STRETCH;
+            NEW cntrz {
+                caption = 'Текущие значения';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE PROPERTY(note(mm));
+                MOVE PROPERTY(note2(mm));
+            }
+            NEW cntrz2 {
+                caption = 'Создание';
+                MOVE PROPERTY(dateTimeEntry(mm)) {caption = 'Дата/время';}
+                MOVE PROPERTY(nameUserEntry(mm)) {caption = 'Пользователь';}
+            }
+            NEW cntrz3 {
+                caption = 'Корректировка';
+                MOVE PROPERTY(dateTimeKorr(mm)) {caption = 'Дата/время';}
+                MOVE PROPERTY(nameUserKorr(mm)) {caption = 'Пользователь';}
+            }
+            NEW ctrz4 {
+                horizontal = TRUE;
+                alignment = STRETCH;
+                NEW loadFile {
+                    caption = 'Файл';
+                    horizontal = TRUE;
+                    MOVE PROPERTY (openFile(m));
+                }
+            }
+        }
+        MOVE BOX(m) {fill=10;}
+        MOVE BOX(r) {fill=1;}
+    }
+}
+
+NAVIGATOR {
+    finance {
+        NEW ACTION copyTables;
+        NEW salariesCopy;
+        NEW viewMoneyMoveCopy;
+    }
+}

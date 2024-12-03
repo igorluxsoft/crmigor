@@ -79,7 +79,7 @@ note1 'Примечание-1' = DATA STRING (Salary);
 note2 'Примечание-2' = DATA STRING (Salary);
 
 sumPay 'Сумма к выплате' = DATA NUMERIC[12,2] (Salary);
-sumPayUSD 'Сумма к выплате, USD' (Salary s) = DATA NUMERIC[12,2] (Salary);
+sumPayUSD 'Сумма к выплате, USD' = DATA NUMERIC[12,2] (Salary);
 
 sumTransfer 'Выплачено' (Salary s) = sumTransfer(employee(s), month(s), year(s));
 

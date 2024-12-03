@@ -109,7 +109,6 @@ quarter 'Квартал' (MoneyMove m) = CASE WHEN monthNumber(m) < 4 THEN 1
     ELSE 4 ;
 year 'Год' (MoneyMove m) = extractYear(date(m));
 
-
 in 'Отм.' = DATA LOCAL BOOLEAN (MoneyMove);
 
 FORM editMoneyMove 'Движение денег'
@@ -248,7 +247,7 @@ recalculateSummaUSD 'Перерасчет сумм USD' () {
 }
 
 /// Импорт из журналов "Платежи" и "Расходы"
-FORM inputParameters 'Параметры импорта'
+FORM inputParameters 'Параметры импорта из бух. LuxSoft'
     OBJECTS dateimp = DATE PANEL
     PROPERTIES dateimp 'Дата начала импорта' = VALUE (dateimp)
     EVENTS ON INIT {
@@ -305,7 +304,7 @@ importDataExpense 'Импорт расходы' (DATE dv) {
     }
 }
 
-importData 'Импорт данных' () {
+importData 'Импорт из бух. LuxSoft' () {
     messPayment() <- '';
     messExpense() <- '';
     
@@ -334,11 +333,11 @@ importData 'Импорт данных' () {
         IF length(messPayment()) > 5 OR length(messExpense()) > 5 THEN {
             IF length(messPayment()) > 5 THEN messPayment() <- '    ПЛАТЕЖИ :\n' + messPayment();
             IF length(messExpense()) > 5 THEN messExpense() <- '\n\n    РАСХОДЫ :\n' + messExpense();
-            mess() <- 'Некорректные записи:\n\n' + messPayment() + messExpense();
+            mess() <- 'Некорректные записи при импорте из бух. LuxSoft :\n\n' + messPayment() + messExpense();
             MESSAGE mess();
         }
         APPLY ;
-    } ELSE MESSAGE 'Выполнение отменено';
+    } ELSE MESSAGE 'Выполнение импорта из бух. LuxSoft отменено';
 }
 
 ///// Добавить запись по текущей
@@ -400,6 +399,11 @@ deleteFile 'Удалить' (MoneyMove m) {
     }    
 } CONFIRM;
 
+// нужно для отображения по каждой записи в Движении денег
+dateTimeBalance 'Дата/время расчета остатков' (MoneyMove m) = dateTimeBalance(registerAccounting(m));
+balanceRegisterAccounting 'Текущий остаток' (MoneyMove m) = balance(registerAccounting(m));
+//
+
 filterMoneyMoveDateFrom 'Дата с' = DATA LOCAL DATE ();
 filterDateFrom (MoneyMove m) = date(m) >= filterMoneyMoveDateFrom() OR (m IS MoneyMove AND NOT filterMoneyMoveDateFrom());
 
@@ -447,7 +451,7 @@ FORM viewMoneyMove 'Движение денег'
         filterEmployee(m)
     
     OBJECTS mm = MoneyMove PANEL    
-        PROPERTIES(mm) READONLY note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
+        PROPERTIES(mm) READONLY note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr, dateTimeBalance, balanceRegisterAccounting 
         FILTERS mm=m
 ;
 
@@ -462,6 +466,11 @@ DESIGN viewMoneyMove {
                 alignment = STRETCH;
                 MOVE PROPERTY(note(mm));
                 MOVE PROPERTY(note2(mm));
+            }
+            NEW cntrz1 {
+                caption = 'Текущий остаток';
+                MOVE PROPERTY(dateTimeBalance(mm)) {caption='Дата/время расчета';}
+                MOVE PROPERTY(balanceRegisterAccounting(mm)) {caption='Сумма';}
             }
             NEW cntrz2 {
                 caption = 'Создание';
@@ -612,14 +621,6 @@ fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInte
             IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0);
 
     balanceUSD(RegisterAccounting r, INTEGER mes) <- round2(balance(r,mes,year) * rateUSD(r,mes) * (OVERRIDE koeff(r),1.0)) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0);
-//    balanceUSD(RegisterAccounting r, INTEGER mes) <- CASE
-//        WHEN shortName(currency(r)) = 'USD' THEN balance(r,mes,year) * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
-//        WHEN shortName(currency(r)) = 'BYN' THEN round2(balance(r,mes,year) * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
-//             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0)
-//        ELSE round2(balance(r,mes,year) * rateOn(typeExchange('НБРБ (BYN)'), currency(r), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))) 
-//             * rateOn(defaultTypeExchange(), currency(typeExchange('НБРБ (BYN)')), lastDayOfMonth(toDateFormat('01' + lpad(TEXT (mes), 2, '0') + STRING[4](year), 'DDMMYYYY'))))
-//             * (OVERRIDE koeff(r),1.0) IF iterate(mes,1,12) AND (isInternal(r)=isInternal OR isInternal=0) ;
-//    
     // итоги
     balanceUSD(INTEGER mes) <- GROUP SUM balanceUSD(RegisterAccounting r, mes) ;
     deltaBalanceUSD(INTEGER mes) <- (IF mes > 1 THEN balanceUSD(mes) (-) balanceUSD(mes-1)
