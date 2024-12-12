@@ -1,0 +1,154 @@
+MODULE MoveMoneyOprerationDop;
+
+REQUIRE MoveMoneyOpreration, Payment;
+
+NAMESPACE MoveMoney;
+
+CLASS GrupMoveMoneyOperation 'Группы операций';
+name 'Группа операций' = DATA STRING[30] (GrupMoveMoneyOperation) NONULL ;
+
+grup  'Группа операций' = DATA GrupMoveMoneyOperation (MoveMoneyOpreration);
+nameGrupOperation 'Группа операций' = name(grup(MoveMoneyOpreration m));
+
+FORM listGrupMoveMoneyOperation 'Группы операций'
+    OBJECTS g = GrupMoveMoneyOperation
+    PROPERTIES(g) READONLY name
+    PROPERTIES(g) NEWSESSION EDIT, NEW, DELETE GRID 
+    LIST GrupMoveMoneyOperation OBJECT g
+    ORDERS name(g)
+;
+
+FORM editGrupMoveMoneyOperation 'Группа операций'
+    OBJECTS r = GrupMoveMoneyOperation PANEL
+    PROPERTIES(r) name
+    EDIT GrupMoveMoneyOperation OBJECT r
+;
+
+EXTEND FORM ediMoveMoneyOpreration 
+    PROPERTIES(o) nameGrupOperation AFTER code(o)
+;
+
+DESIGN ediMoveMoneyOpreration {
+    BOX(o) {
+        MOVE PROPERTY (nameGrupOperation(o)) AFTER PROPERTY(code(o));
+    }
+}
+
+EXTEND FORM viewMoveMoneyOpreration
+    PROPERTIES(o) READONLY nameGrupOperation AFTER code(o)
+;
+EXTEND FORM listMoveMoneyOpreration
+    PROPERTIES(o) READONLY nameGrupOperation AFTER code(o)
+;
+///// 
+
+CLASS TypeAnalytics 'Вид аналитики';
+code 'Вид аналитики' = DATA STRING[10] (TypeAnalytics) NONULL ;
+name 'Наименование вида аналитики' = DATA STRING[70] (TypeAnalytics) ;
+
+typeAnalytics 'Вид аналитики' = DATA TypeAnalytics (MoveMoneyOpreration);
+codeTypeAnalytics 'Вид аналитики' = code(typeAnalytics(MoveMoneyOpreration m));
+nameTypeAnalytics 'Вид аналитики' = name(typeAnalytics(MoveMoneyOpreration m));
+
+typeAnalytics = GROUP AGGR (TypeAnalytics t) BY code(t);
+
+FORM listTypeAnalytics 'Виды аналитики'
+    OBJECTS t = TypeAnalytics
+    PROPERTIES(t) READONLY code, name
+    PROPERTIES(t) NEWSESSION EDIT, NEW, DELETE GRID
+    LIST TypeAnalytics OBJECT t
+    ORDERS code(t)
+;
+
+FORM editTypeAnalytics 'Вид аналитики'
+    OBJECTS t = TypeAnalytics PANEL
+    PROPERTIES(t) code, name
+    EDIT TypeAnalytics OBJECT t
+;
+DESIGN editTypeAnalytics {
+    BOX(t) {
+        horizontal = FALSE;
+        MOVE PROPERTY (code(t));
+        MOVE PROPERTY (name(t)) {fill=1;alignment = STRETCH;}
+    }
+}
+
+EXTEND FORM ediMoveMoneyOpreration
+    PROPERTIES(o) codeTypeAnalytics AFTER name(o)
+    PROPERTIES(o) nameTypeAnalytics AFTER codeTypeAnalytics(o)
+;
+
+DESIGN ediMoveMoneyOpreration {
+    BOX(o) {
+        MOVE PROPERTY (codeTypeAnalytics(o)) AFTER PROPERTY(name(o));
+        MOVE PROPERTY (nameTypeAnalytics(o)) AFTER PROPERTY(codeTypeAnalytics(o));
+    }
+}
+
+EXTEND FORM viewMoveMoneyOpreration
+    PROPERTIES(o) READONLY codeTypeAnalytics, nameTypeAnalytics AFTER name(o)
+;
+EXTEND FORM listMoveMoneyOpreration
+    PROPERTIES(o) READONLY codeTypeAnalytics, nameTypeAnalytics AFTER name(o)
+;
+
+CLASS Analytics 'Аналитика';
+typeAnalytics 'Вид аналитики' = DATA TypeAnalytics (Analytics) NONULL ;
+codeTypeAnalytics 'Вид аналитики' = code(typeAnalytics(Analytics a)) CHARWIDTH 7;
+nameTypeAnalytics 'Вид аналитики (наименование)' = name(typeAnalytics(Analytics a)) CHARWIDTH 7;
+
+code 'Код аналитики' = DATA STRING[10] (Analytics) NONULL ;
+name 'Наименование аналитики' = DATA STRING[70] (Analytics) ;
+analytics = GROUP AGGR (Analytics a) BY code(a);
+
+isReadOnly '' = DATA LOCAL NESTED BOOLEAN ();
+filterTypeAnalytics 'Вид аналитики' = DATA LOCAL NESTED TypeAnalytics () ;
+nameFilterTypeAnalytics 'Вид аналитики' = name(filterTypeAnalytics()) CHARWIDTH 15;
+filterTypeAnalytics(Analytics a) = typeAnalytics(a) == filterTypeAnalytics() OR (a IS Analytics AND NOT filterTypeAnalytics());
+
+FORM listAnalytics 'Справочник аналитик'
+    PROPERTIES() READONLYIF isReadOnly() nameFilterTypeAnalytics
+    OBJECTS a = Analytics
+    PROPERTIES(a) READONLY code, name, codeTypeAnalytics, nameTypeAnalytics
+    PROPERTIES(a) NEWSESSION EDIT, NEW, DELETE GRID
+    LIST Analytics OBJECT a
+    ORDERS code(a)
+    FILTERS filterTypeAnalytics(a)
+;
+DESIGN listAnalytics {
+    OBJECTS {
+        NEW topFilters {
+            caption = 'Фильтры';
+            horizontal = TRUE;
+            alignment = STRETCH;
+            MOVE PROPERTY (nameFilterTypeAnalytics());
+        }
+        MOVE BOX(a);
+    }
+}
+
+FORM editAnalytics 'Аналитика'
+    OBJECTS a = Analytics PANEL
+    PROPERTIES(a) nameTypeAnalytics, code, name
+    EDIT Analytics OBJECT a
+;
+DESIGN editAnalytics {
+    BOX(a) {
+        horizontal = FALSE;
+        MOVE PROPERTY (nameTypeAnalytics(a));
+        MOVE PROPERTY (code(a));
+        MOVE PROPERTY (name(a)) {fill=1;alignment = STRETCH;}
+    }
+}
+
+WHEN LOCAL SET(Analytics a IS Analytics) AND filterTypeAnalytics() DO 
+    typeAnalytics(a) <- filterTypeAnalytics();
+
+NAVIGATOR {
+    finance {
+        NEW FOLDER nsi 'Справочники'{
+            NEW listTypeAnalytics;
+            NEW listAnalytics;
+        }
+    }
+}

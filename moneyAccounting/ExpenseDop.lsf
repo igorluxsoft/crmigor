@@ -1,0 +1,28 @@
+MODULE ExpenseDop;
+
+REQUIRE Expense, MoveMoneyOprerationDop;
+
+NAMESPACE Expense;
+
+analytics 'Аналитика' = DATA Analytics (Expense);
+nameAnalytics 'Аналитика' = name(analytics(Expense p)) CHARWIDTH 7;
+codeAnalytics 'Код аналитики' = code(analytics(Expense p)) CHARWIDTH 3;
+
+onChangeAnalitics (Expense p) {
+    LOCAL mmoper = MoveMoneyOpreration ();
+    mmoper() <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+
+    IF typeAnalytics(mmoper()) THEN isReadOnly() <- TRUE;
+    filterTypeAnalytics() <- typeAnalytics(mmoper());
+    DIALOG listAnalytics OBJECTS a INPUT DO analytics(p) <- a;
+    filterTypeAnalytics() <- NULL;
+    isReadOnly() <- NULL;
+}
+
+EXTEND FORM expense
+    PROPERTIES(o) nameAnalytics ON CHANGE onChangeAnalitics(o)
+;
+
+EXTEND FORM expenses
+    PROPERTIES(o) READONLY codeAnalytics, nameAnalytics
+;

@@ -1,0 +1,35 @@
+MODULE PaymentDop;
+
+REQUIRE Payment, MoveMoneyOprerationDop;
+
+NAMESPACE Payment;
+
+analytics 'Аналитика' = DATA Analytics (Payment);
+nameAnalytics 'Аналитика' = name(analytics(Payment p)) CHARWIDTH 7;
+codeAnalytics 'Код аналитики' = code(analytics(Payment p)) CHARWIDTH 3;
+
+onChangeAnalitics (Payment p) {
+    LOCAL mmoper = MoveMoneyOpreration ();
+    mmoper() <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+
+    IF typeAnalytics(mmoper()) THEN isReadOnly() <- TRUE;
+    filterTypeAnalytics() <- typeAnalytics(mmoper());
+    DIALOG listAnalytics OBJECTS a INPUT DO analytics(p) <- a;
+    filterTypeAnalytics() <- NULL;
+    isReadOnly() <- NULL;
+}
+
+EXTEND FORM payment
+    PROPERTIES(o) nameAnalytics ON CHANGE onChangeAnalitics(o)
+;
+DESIGN payment {
+    OBJECTS {
+        main {
+            MOVE PROPERTY (nameAnalytics(o)) {charWidth=80;};
+        }
+    }
+}
+
+EXTEND FORM payments
+    PROPERTIES(o) READONLY codeAnalytics, nameAnalytics
+;

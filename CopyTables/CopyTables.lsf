@@ -104,6 +104,7 @@ dateTimeSummaUSD 'Дата/время расчета сумм USD' = DATA DATETI
 CLASS MoneyMoveCopy 'Движение денег (копия)';
 registerAccounting 'Регистр учета' = DATA RegisterAccounting (MoneyMoveCopy);
 operation 'Операция' = DATA MoveMoneyOpreration (MoneyMoveCopy);
+analytics 'Аналитика' = DATA Analytics (MoneyMoveCopy);
 date 'Дата' = DATA DATE (MoneyMoveCopy);
 summa 'Сумма' = DATA NUMERIC[14,2] (MoneyMoveCopy);
 summaUSD 'Сумма, USD' = DATA NUMERIC[14,2] (MoneyMoveCopy);
@@ -124,6 +125,9 @@ codeRegisterAccounting 'Регистр учета' = code(registerAccounting(Mon
 shortNameCurrency 'Валюта' = shortNameCurrency(registerAccounting(MoneyMoveCopy m));
 nameOperation 'Операция' = name(operation(MoneyMoveCopy m)) CHARWIDTH 7;
 codeOperation 'Код операции' = code(operation(MoneyMoveCopy m)) CHARWIDTH 3;
+nameGrupOperation 'Группа операции' = nameGrupOperation(operation(MoneyMoveCopy m)) CHARWIDTH 7;
+nameAnalytics 'Аналитика' = name(analytics(MoneyMoveCopy m)) CHARWIDTH 7;
+codeAnalytics 'Код аналитики' = code(analytics(MoneyMoveCopy m)) CHARWIDTH 3;
 nameCustomer 'Клиент' (MoneyMoveCopy m) = name(customer(m)) CHARWIDTH 5;
 nameLegalEntity 'Организация'(MoneyMoveCopy m) = name(legalEntity(m)) CHARWIDTH 5;
 nameEmployee 'Сотрудник' (MoneyMoveCopy m) = fullName(employee(m)) CHARWIDTH 5;
@@ -218,6 +222,7 @@ copyTables 'Копирование таблиц' () {
                 
                 registerAccounting(mc) <- registerAccounting(m);
                 operation(mc) <- operation(m);
+                analytics(mc) <- analytics(m);
                 date(mc) <- date(m);
                 summa(mc) <- summa(m);
                 summaUSD(mc) <- summaUSD(m);
@@ -286,7 +291,8 @@ FORM viewMoneyMoveCopy 'Движение денег (КОПИЯ)'
     PROPERTIES 'Дата/время копии: ' =dateTimeCopyMoneyAccounting() PANEL
     
     OBJECTS m = MoneyMoveCopy LAST
-    PROPERTIES(m) READONLY date, codeOperation, nameOperation, codeRegisterAccounting, nameRegisterAccounting, summa, balance, shortNameCurrency, summaUSD,
+    PROPERTIES(m) READONLY date, codeOperation, nameOperation, nameGrupOperation, nameAnalytics, codeAnalytics, codeRegisterAccounting, nameRegisterAccounting, 
+        summa, balance, shortNameCurrency, summaUSD,
         nameCustomer, nameLegalEntity, nameEmployee, note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
     PROPERTIES(m) openFile READONLYIF NOT file(m)
     ORDERS date(m), codeOperation(m)
@@ -294,7 +300,7 @@ FORM viewMoneyMoveCopy 'Движение денег (КОПИЯ)'
     OBJECTS mm = MoneyMoveCopy PANEL
     PROPERTIES(mm) READONLY note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
     FILTERS mm=m
-
+    
     OBJECTS r = RegisterAccountingCopy
     PROPERTIES(r) READONLY code, name, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
     ORDERS name(r)
@@ -339,8 +345,10 @@ DESIGN viewMoneyMoveCopy {
 
 NAVIGATOR {
     finance {
-        NEW ACTION copyTables;
-        NEW salariesCopy;
-        NEW viewMoneyMoveCopy;
+        NEW FOLDER copy 'Копирование' {
+            NEW ACTION copyTables;
+            NEW salariesCopy;
+            NEW viewMoneyMoveCopy;
+        }    
     }
 }

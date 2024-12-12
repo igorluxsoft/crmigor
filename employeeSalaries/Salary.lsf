@@ -456,7 +456,7 @@ DESIGN salaries {
 
 NAVIGATOR {
     finance {
-        NEW salaries;
+        NEW salaries BEFORE nsi;
     }
 }
 
