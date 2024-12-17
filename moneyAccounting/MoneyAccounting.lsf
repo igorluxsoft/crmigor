@@ -546,6 +546,7 @@ NAVIGATOR {
     finance {
         NEW viewMoneyMove BEFORE nsi;
         nsi {
+            NEW FORM viewMoveMoneyOpreration FIRST ;
             NEW viewRegisterAccounting;
         }
     }
