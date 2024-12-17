@@ -171,6 +171,7 @@ FORM editReportingMonth 'Отчетный месяц'
     OBJECTS r = ReportingMonth PANEL
     PROPERTIES(r) READONLY nameMonth, year
     PROPERTIES(r) curRate, sumBonus, closed, note
+    EDIT ReportingMonth OBJECT r
 ;
 
 DESIGN editReportingMonth {
@@ -339,7 +340,7 @@ DESIGN transfer {
             MOVE PROPERTY (number(t));
             MOVE PROPERTY (nameMonth(t));
             MOVE PROPERTY (year(t));
-            MOVE PROPERTY (nameEmployee(t));
+            MOVE PROPERTY (nameEmployee(t)) {charWidth=80;}
             MOVE PROPERTY (nameOperation(t));
             MOVE PROPERTY (sum(t));
             MOVE PROPERTY (note(t));

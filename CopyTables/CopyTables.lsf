@@ -8,7 +8,7 @@ dateTimeCopySalary 'Дата копии таблиц <Зарплата>' = DATA 
 dateTimeCopyMoneyAccounting 'Дата копии таблиц <Движение денег>' = DATA DATETIME ();
 
 isSalary 'Зарплата (3 таблицы)' = DATA LOCAL NESTED BOOLEAN ();
-isMoneyAccounting 'Движение денег (2 таблицы)' = DATA LOCAL NESTED BOOLEAN ();
+isMoneyAccounting 'Движение денег (1 таблица)' = DATA LOCAL NESTED BOOLEAN ();
 strHelp '' = DATA LOCAL NESTED TEXT ();
 
 FORM inputParameters 'Копирование таблиц'
@@ -89,17 +89,7 @@ nameEmployee 'Сотрудник' (SalaryCopy s) = fullName(employee(s)) CHARWID
 sumBonus 'Премия' (SalaryCopy s) = sumBonus1(s) (+) sumBonus2(s) (+) sumBonus3(s) (+) sumBonusQuarter(s);
 sumFine 'Штраф' (SalaryCopy s) = sumFine1(s) (+) sumFine2(s) (+) sumFine3(s);
 
-///// Таблицы <Движение денег>
-CLASS RegisterAccountingCopy 'Регистр учета (копия)';
-code 'Код' = DATA STRING[20] (RegisterAccountingCopy) CHARWIDTH 5;
-name 'Название' = DATA STRING[100] (RegisterAccountingCopy) CHARWIDTH 10;
-currency = DATA Currency (RegisterAccountingCopy) ;
-isNoCash 'Безналичный' = DATA BOOLEAN (RegisterAccountingCopy);
-koeff 'Коэффициент' = DATA NUMERIC[12,2] (RegisterAccountingCopy) ;
-isInternal 'Внутр./внеш.' = DATA INTEGER (RegisterAccountingCopy);
-dateTimeBalance 'Дата/время расчета остатков' = DATA DATETIME (RegisterAccountingCopy);
-dateTimeSummaUSD 'Дата/время расчета сумм USD' = DATA DATETIME (RegisterAccountingCopy);
-
+///// Таблица <Движение денег>
 
 CLASS MoneyMoveCopy 'Движение денег (копия)';
 registerAccounting 'Регистр учета' = DATA RegisterAccounting (MoneyMoveCopy);
@@ -134,7 +124,6 @@ nameEmployee 'Сотрудник' (MoneyMoveCopy m) = fullName(employee(m)) CHAR
 nameUserEntry 'Создан пользователем' (MoneyMoveCopy m) = name(userEntry(m)) CHARWIDTH 5;
 nameUserKorr 'Корр-ка пользователем' (MoneyMoveCopy m) = name(userKorr(m)) CHARWIDTH 5;
 /////
-
 
 copyTables 'Копирование таблиц' () {
     strHelp() <- 'Дата/время последней копии таблиц:\n <Зарплата> - ' + 
@@ -198,23 +187,10 @@ copyTables 'Копирование таблиц' () {
             }
             
             dateTimeCopySalary() <- currentDateTime();
+            APPLY ;
         }
         
         IF isMoneyAccounting() THEN {
-            
-            DELETE RegisterAccountingCopy r WHERE r IS RegisterAccountingCopy; // чистим таблицу с копией  <Регистр учета (копия)>
-            
-            FOR RegisterAccounting r IS RegisterAccounting NEW rc = RegisterAccountingCopy DO {
-                
-                code(rc) <- code(r);
-                name(rc) <- name(r);
-                currency(rc) <- currency(r);
-                isNoCash(rc) <- isNoCash(r);
-                koeff(rc) <- koeff(r);
-                isInternal(rc) <- isInternal(r);
-                dateTimeBalance(rc) <- dateTimeBalance(r);
-                dateTimeSummaUSD(rc) <- dateTimeSummaUSD(r);
-            }
             
             DELETE MoneyMoveCopy m WHERE m IS MoneyMoveCopy; // чистим таблицу с копией  <Движение денег (копия)>
             
@@ -240,9 +216,8 @@ copyTables 'Копирование таблиц' () {
             }
             
             dateTimeCopyMoneyAccounting() <- currentDateTime();
+            APPLY;
         }
-        
-        APPLY ;
         
         MESSAGE 'Копирование завершено';
         
@@ -250,9 +225,132 @@ copyTables 'Копирование таблиц' () {
 }
 
 
+salariesRecovery 'Восстановление таблиц "Начисление зарплаты"' () {
+    ASK '               ВНИМАНИЕ ! \n\n '+ 'Вся информация в таблицах "Начисление зарплаты" будет УДАЛЕНА. \n\n ' +
+        'После удаления в таблицы "Начисление зарплаты" будет перенесена информация из КОПИИ (текущие журналы).\n\n'+
+        'Дата/время копии: ' + toChar(dateTimeCopySalary(),'DD.MM.YYYY HH24:MI')+
+        '\n\nНажмите "Да" для восстановления таблиц "Начисление зарплаты" или "Нет" для отказа' yes = YESNO DO {
+        
+        IF yes THEN {
+
+            ASK 'Подтвердите восстановление таблиц "Начисление зарплаты" нажатием кнопки "Да"' yes2 = YESNO DO {
+
+                IF yes2 THEN {
+                    
+                    DELETE ReportingMonth a WHERE a IS ReportingMonth; // чистим таблицу <Отчетный месяц>
+                    
+                    FOR ReportingMonthCopy rc IS ReportingMonthCopy NEW r = ReportingMonth DO {
+                        month(r) <- month(rc) ;
+                        year(r) <- year(rc) ;
+                        closed(r) <- closed(rc) ;
+                        curRate(r) <- curRate(rc) ;
+                        sumBonus(r) <- sumBonus(rc) ;
+                        note(r) <- note(rc) ;
+                    }
+                    
+                    DELETE Transfer t WHERE t IS Transfer; // чистим таблицу <Выплаты>
+                    
+                    FOR TransferCopy tc IS TransferCopy NEW t = Transfer DO {
+                        number(t) <- number(tc);
+                        date(t) <- date(tc);
+                        month(t) <- month(tc);
+                        year(t) <- year(tc);
+                        operation(t) <- operation(tc);
+                        employee(t) <- employee(tc);
+                        sum(t) <- sum(tc);
+                        note(t) <- note(tc);
+                        registerAccounting(t) <- registerAccounting(tc);
+                        typePayment(t) <- typePayment(tc);
+                    }
+        
+                    DELETE Salary s WHERE s IS Salary; // чистим таблицу <Зарплата сотрудников>
+        
+                    FOR SalaryCopy sc IS SalaryCopy NEW s = Salary DO {
+                        month(s) <- month(sc);
+                        year(s) <- year(sc);
+                        employee(s) <- employee(sc);
+                        sumSalary(s) <- sumSalary(sc);
+                        sumBonus1(s) <- sumBonus1(sc);
+                        sumBonus2(s) <- sumBonus2(sc);
+                        sumBonus3(s) <- sumBonus3(sc);
+                        sumBonusQuarter(s) <- sumBonusQuarter(sc);
+                        ktu(s) <- ktu(sc);
+                        sumFine1(s) <- sumFine1(sc);
+                        sumFine2(s) <- sumFine2(sc);
+                        sumFine3(s) <- sumFine3(sc);
+                        note1(s) <- note1(sc);
+                        note2(s) <- note2(sc);
+                        sumPay(s) <- sumPay(sc);
+                        sumPayUSD(s) <- sumPayUSD(sc);
+                        payExtra(s) <- payExtra(sc);
+                        payExtraCash(s) <- payExtraCash(sc);
+                        deltaPay(s) <- deltaPay(sc);
+                        deltaReal(s) <- deltaReal(sc);
+                        isReturn(s) <- isReturn(sc);
+                    }
+                    APPLY ;
+                    MESSAGE 'Восстановление завершено';
+                }
+                ELSE MESSAGE 'Восстановление отменено';
+            }
+            ELSE MESSAGE 'Восстановление отменено';
+        }
+        ELSE MESSAGE 'Восстановление отменено';
+    }
+    ELSE MESSAGE 'Восстановление отменено';
+}
+
+
+moneyAccountingRecovery 'Восстановление таблицы "Движение денег"' () {
+    ASK '               ВНИМАНИЕ ! \n\n ' + 'Вся информация в таблице "Движение денег" будет УДАЛЕНА. \n\n ' +
+        'После удаления в таблицу "Движение денег" будет перенесена информация из КОПИИ (текущий журнал).\n\n' +
+        'Дата/время копии: ' + toChar(dateTimeCopyMoneyAccounting(), 'DD.MM.YYYY HH24:MI') +
+        '\n\nНажмите "Да" для восстановления таблицы "Движение денег" или "Нет" для отказа' yes = YESNO DO {
+        
+        IF yes THEN {
+            
+            ASK 'Подтвердите восстановление таблицы "Движение денег" нажатием кнопки "Да"' yes2 = YESNO DO {
+
+                IF yes2 THEN {
+                    
+                    DELETE MoneyMove m WHERE m IS MoneyMove; // чистим таблицу с копией  <Движение денег>
+                    
+                    FOR MoneyMoveCopy mc IS MoneyMoveCopy NEW m = MoneyMove DO {
+                        
+                        registerAccounting(m) <- registerAccounting(mc);
+                        operation(m) <- operation(mc);
+                        analytics(m) <- analytics(mc);
+                        date(m) <- date(mc);
+                        summa(m) <- summa(mc);
+                        summaUSD(m) <- summaUSD(mc);
+                        balance(m) <- balance(mc);
+                        customer(m) <- customer(mc);
+                        legalEntity(m) <- legalEntity(mc);
+                        employee(m) <- employee(mc);
+                        note(m) <- note(mc);
+                        note2(m) <- note2(mc);
+                        dateTimeEntry(m) <- dateTimeEntry(mc);
+                        userEntry(m) <- userEntry(mc);
+                        dateTimeKorr(m) <- dateTimeKorr(mc);
+                        userKorr(m) <- userKorr(mc);
+                        file(m) <- file(mc);
+                    }
+                    APPLY;
+                    MESSAGE 'Восстановление завершено';
+                }
+                ELSE MESSAGE 'Восстановление отменено';
+            }
+            ELSE MESSAGE 'Восстановление отменено';
+        }
+        ELSE MESSAGE 'Восстановление отменено';
+    }
+    ELSE MESSAGE 'Восстановление отменено';
+}
+
 
 FORM salariesCopy 'Начисление зарплаты (КОПИЯ)'
-    PROPERTIES 'Дата/время копии: ' =dateTimeCopySalary() PANEL 
+    PROPERTIES READONLY 'Дата/время копии: ' =dateTimeCopySalary() PANEL
+    PROPERTIES salariesRecovery() TOOLBAR 
     
     OBJECTS r = ReportingMonthCopy
     PROPERTIES(r) READONLY nameMonth, year, curRate, sumBonus, closed, note
@@ -286,9 +384,9 @@ DESIGN salariesCopy {
 
 openFile 'Открыть' (MoneyMoveCopy m) { open(file(m)); }
 
-
 FORM viewMoneyMoveCopy 'Движение денег (КОПИЯ)'
-    PROPERTIES 'Дата/время копии: ' =dateTimeCopyMoneyAccounting() PANEL
+    PROPERTIES READONLY 'Дата/время копии: ' =dateTimeCopyMoneyAccounting() PANEL
+    PROPERTIES moneyAccountingRecovery() TOOLBAR 
     
     OBJECTS m = MoneyMoveCopy LAST
     PROPERTIES(m) READONLY date, codeOperation, nameOperation, nameGrupOperation, nameAnalytics, codeAnalytics, codeRegisterAccounting, nameRegisterAccounting, 
@@ -300,10 +398,6 @@ FORM viewMoneyMoveCopy 'Движение денег (КОПИЯ)'
     OBJECTS mm = MoneyMoveCopy PANEL
     PROPERTIES(mm) READONLY note, note2, dateTimeEntry, nameUserEntry, dateTimeKorr, nameUserKorr
     FILTERS mm=m
-    
-    OBJECTS r = RegisterAccountingCopy
-    PROPERTIES(r) READONLY code, name, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
-    ORDERS name(r)
 ;
 
 DESIGN viewMoneyMoveCopy {
@@ -338,9 +432,8 @@ DESIGN viewMoneyMoveCopy {
                 }
             }
         }
-        MOVE BOX(m) {fill=10;}
-        MOVE BOX(r) {fill=1;}
-    }
+        MOVE BOX(m) {fill=1;}
+     }
 }
 
 NAVIGATOR {
@@ -352,3 +445,44 @@ NAVIGATOR {
         }    
     }
 }
+
+///// Удаление записи в журнале "Регистры учета"
+countRecordsInMoneyMove 'Количество записей по регистру учета' = GROUP SUM 1 BY registerAccounting(MoneyMove m);
+countRecordsInMoneyMoveCopy 'Количество записей по регистру учета' = GROUP SUM 1 BY registerAccounting(MoneyMoveCopy mc);
+countRecordsInTransfer 'Количество записей по регистру учета' = GROUP SUM 1 BY registerAccounting(Transfer t);
+countRecordsInTransferCopy 'Количество записей по регистру учета' = GROUP SUM 1 BY registerAccounting(TransferCopy t);
+
+deleteInRegisterAccounting 'Удалить' (RegisterAccounting r)  {
+    // проверка наличия удаляемого регистра учета в журналах
+    IF countRecordsInMoneyMove(r) THEN {
+        MESSAGE 'Удаление регистра учета невозможно !\n\n Данный регистр присутствует в журнале "Движение денег"';
+        RETURN ;
+    }
+    IF countRecordsInMoneyMoveCopy(r) THEN {
+        MESSAGE 'Удаление регистра учета невозможно !\n\n Данный регистр присутствует в журнале "Движение денег (КОПИЯ)"';
+        RETURN ;
+    }
+    IF countRecordsInTransfer(r) THEN {
+        MESSAGE 'Удаление регистра учета невозможно !\n\n Данный регистр присутствует в журнале "Выплаты"';
+        RETURN ;
+    }
+    IF countRecordsInTransferCopy(r) THEN {
+        MESSAGE 'Удаление регистра учета невозможно !\n\n Данный регистр присутствует в журнале "Выплаты (КОПИЯ)"';
+        RETURN ;
+    }
+    //
+    
+    NEWSESSION {
+        ASK 'Вы действительно хотите удалить текущую запись  ?' DO {
+            NEWSESSION NESTED LOCAL {
+                DELETE r;
+                APPLY ;
+            }
+        }
+    }
+} IMAGE 'delete.png';
+
+EXTEND FORM viewRegisterAccounting
+    PROPERTIES(r) deleteInRegisterAccounting TOOLBAR LAST
+;
+/////

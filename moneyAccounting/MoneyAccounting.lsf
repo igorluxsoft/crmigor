@@ -42,7 +42,7 @@ registerAccounting = GROUP AGGR (RegisterAccounting r) BY code(r);
 FORM viewRegisterAccounting 'Регистры учета'
     OBJECTS r = RegisterAccounting
     PROPERTIES(r) READONLY code, name, shortNameCurrency, isNoCash, koeff, isInternal, dateTimeBalance, dateTimeSummaUSD
-    PROPERTIES(r) NEWSESSION NEW, EDIT, DELETE
+    PROPERTIES(r) NEWSESSION NEW, EDIT
     ORDERS name(r)
 ;
 
@@ -68,6 +68,17 @@ FORM editRegisterAccounting 'Регистр учета'
     PROPERTIES(r) code, name, shortNameCurrency, isNoCash, koeff, isInternal
     EDIT RegisterAccounting OBJECT r
 ;
+DESIGN editRegisterAccounting {
+    BOX(r) {
+        horizontal = FALSE;
+        MOVE PROPERTY (code(r));
+        MOVE PROPERTY (name(r));
+        MOVE PROPERTY (shortNameCurrency(r));
+        MOVE PROPERTY (isNoCash(r));
+        MOVE PROPERTY (koeff(r));
+        MOVE PROPERTY (isInternal(r));
+    }
+}
 
 WHEN LOCAL FORMS editRegisterAccounting SETCHANGED(code(RegisterAccounting r)) AND NOT isInternal(r) DO {
     isInternal(r) <- 1;
