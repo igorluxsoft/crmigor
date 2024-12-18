@@ -7,17 +7,64 @@ NAMESPACE MoveMoney;
 CLASS GrupMoveMoneyOperation 'Группы операций';
 name 'Группа операций' = DATA STRING[30] (GrupMoveMoneyOperation) NONULL ;
 
-grup  'Группа операций' = DATA GrupMoveMoneyOperation (MoveMoneyOpreration);
-nameGrupOperation 'Группа операций' = name(grup(MoveMoneyOpreration m));
+TABLE oprerationGrupOperation (MoveMoneyOpreration, GrupMoveMoneyOperation);
+in 'Вкл.' (moveMoneyOpreration, grupMoveMoneyOperation) = DATA BOOLEAN (MoveMoneyOpreration, GrupMoveMoneyOperation);
 
-FORM listGrupMoveMoneyOperation 'Группы операций'
+nameGrupMoveMoneyOperation 'Группы операции' (MoveMoneyOpreration o) =
+    GROUP CONCAT name(GrupMoveMoneyOperation gr) IF in(o, gr), ',' ORDER name(gr),gr  CHARWIDTH 50;
+
+///// Для задания фильтра по операциям
+select 'Отм.' = DATA LOCAL NESTED BOOLEAN (GrupMoveMoneyOperation);
+countSelectedGrupMoveMoneyOperation = GROUP SUM 1 IF select(GrupMoveMoneyOperation g);
+
+unSelectAllGrupMoveMoneyOperation 'Разотметить все' () {
+    select(GrupMoveMoneyOperation gr) <- NULL WHERE gr IS GrupMoveMoneyOperation;
+}
+
+FORM changeGrupMoveMoneyOperationForFilter 'Группы операций'
     OBJECTS g = GrupMoveMoneyOperation
+    PROPERTIES(g) select
     PROPERTIES(g) READONLY name
-    PROPERTIES(g) NEWSESSION EDIT, NEW, DELETE GRID 
-    LIST GrupMoveMoneyOperation OBJECT g
+    PROPERTIES unSelectAllGrupMoveMoneyOperation() TOOLBAR 
+    ORDERS name(g)
+;
+changeGrupMoveMoneyOperationForFilter() {
+    DIALOG changeGrupMoveMoneyOperationForFilter;
+}
+
+///// Для отметки групп по операции и хранения отметок
+unInAllGrupMoveMoneyOperation 'Разотметить все' (MoveMoneyOpreration o) {
+    in(o, GrupMoveMoneyOperation gr) <- NULL WHERE gr IS GrupMoveMoneyOperation;
+}
+
+FORM changeGrupMoveMoneyOperation 'Группы операций'
+    OBJECTS o = MoveMoneyOpreration PANEL
+    PROPERTIES(o) READONLY name
+    
+    OBJECTS g = GrupMoveMoneyOperation
+    PROPERTIES(o,g) in
+    PROPERTIES(g) READONLY name
+    PROPERTIES(g) NEWSESSION EDIT, NEW, DELETE
+    PROPERTIES(o) unInAllGrupMoveMoneyOperation TOOLBAR DRAW g
     ORDERS name(g)
 ;
 
+DESIGN changeGrupMoveMoneyOperation {
+    OBJECTS {
+        NEW cnt1 {
+            caption = 'Операция';
+            alignment = STRETCH;
+            MOVE PROPERTY (name(o)) {caption = 'Операция';}
+        }
+        MOVE BOX(g);
+    }
+}
+
+changeGrupMoveMoneyOperation(MoveMoneyOpreration o) {
+    DIALOG changeGrupMoveMoneyOperation OBJECTS o=o ;
+}
+
+///// Для ввода новой и корр-ки записи 'Группа операций'
 FORM editGrupMoveMoneyOperation 'Группа операций'
     OBJECTS r = GrupMoveMoneyOperation PANEL
     PROPERTIES(r) name
@@ -25,20 +72,20 @@ FORM editGrupMoveMoneyOperation 'Группа операций'
 ;
 
 EXTEND FORM ediMoveMoneyOpreration 
-    PROPERTIES(o) nameGrupOperation AFTER code(o)
+    PROPERTIES(o) nameGrupMoveMoneyOperation AFTER code(o) ON CHANGE changeGrupMoveMoneyOperation(o)
 ;
 
 DESIGN ediMoveMoneyOpreration {
     BOX(o) {
-        MOVE PROPERTY (nameGrupOperation(o)) AFTER PROPERTY(code(o));
+        MOVE PROPERTY (nameGrupMoveMoneyOperation(o)) AFTER PROPERTY(code(o));
     }
 }
 
 EXTEND FORM viewMoveMoneyOpreration
-    PROPERTIES(o) READONLY nameGrupOperation AFTER code(o)
+    PROPERTIES(o) READONLY nameGrupMoveMoneyOperation AFTER code(o)
 ;
 EXTEND FORM listMoveMoneyOpreration
-    PROPERTIES(o) READONLY nameGrupOperation AFTER code(o)
+    PROPERTIES(o) READONLY nameGrupMoveMoneyOperation AFTER code(o)
 ;
 ///// 
 

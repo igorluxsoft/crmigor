@@ -92,7 +92,7 @@ shortNameCurrency 'Валюта' = shortNameCurrency(registerAccounting(MoneyMov
 operation 'Операция' = DATA MoveMoneyOpreration (MoneyMove);
 nameOperation 'Операция' = name(operation(MoneyMove m)) CHARWIDTH 7;
 codeOperation 'Код операции' = code(operation(MoneyMove m)) CHARWIDTH 3;
-nameGrupOperation 'Группа операции' = nameGrupOperation(operation(MoneyMove m)) CHARWIDTH 7;
+nameGrupOperation 'Группа операции' = nameGrupMoveMoneyOperation(operation(MoneyMove m)) CHARWIDTH 7;
 analytics 'Аналитика' = DATA Analytics (MoneyMove);
 nameAnalytics 'Аналитика' = name(analytics(MoneyMove m)) CHARWIDTH 7;
 codeAnalytics 'Код аналитики' = code(analytics(MoneyMove m)) CHARWIDTH 3;
@@ -440,9 +440,9 @@ filterRegisterAccounting 'Регистр учета' = DATA LOCAL RegisterAccoun
 nameFilterRegisterAccounting 'Регистр учета' = name(filterRegisterAccounting()) CHARWIDTH 15;
 filterRegisterAccounting(MoneyMove m) = registerAccounting(m) == filterRegisterAccounting() OR (m IS MoneyMove AND NOT filterRegisterAccounting());
 
-filterGrupOperation 'Группа операций' = DATA LOCAL GrupMoveMoneyOperation ();
-nameFilterGrupOperation 'Группа операций' = name(filterGrupOperation()) CHARWIDTH 15;
-filterGrupOperation(MoneyMove m) = grup(operation(m)) == filterGrupOperation() OR (m IS MoneyMove AND NOT filterGrupOperation());
+nameFilterGrupOperation 'Группа операций' = GROUP CONCAT name(GrupMoveMoneyOperation gr) IF select(gr), ',' ORDER name(gr),gr  CHARWIDTH 15;
+countSelectedGrup = GROUP SUM 1 IF in(operation(MoneyMove m), GrupMoveMoneyOperation gr) AND select(gr) BY m;
+filterGrupOperation(MoneyMove m) = countSelectedGrup(m) OR (m IS MoneyMove AND NOT countSelectedGrupMoveMoneyOperation());
 
 filterOperation 'Операция' = DATA LOCAL MoveMoneyOpreration ();
 nameFilterOperation 'Операция' = name(filterOperation()) CHARWIDTH 15;
@@ -457,7 +457,8 @@ nameFilterEmployee 'Сотрудник' = name(filterEmployee()) CHARWIDTH 15;
 filterEmployee(MoneyMove m) = employee(m) == filterEmployee() OR (m IS MoneyMove AND NOT filterEmployee());
 
 FORM viewMoneyMove 'Движение денег'
-    PROPERTIES() filterMoneyMoveDateFrom, filterMoneyMoveDateTo, nameFilterRegisterAccounting, nameFilterGrupOperation, nameFilterOperation, nameFilterCustomer, nameFilterEmployee
+    PROPERTIES() filterMoneyMoveDateFrom, filterMoneyMoveDateTo, nameFilterRegisterAccounting, nameFilterOperation, nameFilterCustomer, nameFilterEmployee
+    PROPERTIES() nameFilterGrupOperation ON CHANGE changeGrupMoveMoneyOperationForFilter()
     
     OBJECTS m = MoneyMove LAST 
     PROPERTIES(m) in
@@ -525,8 +526,8 @@ DESIGN viewMoneyMove {
                 MOVE PROPERTY (filterMoneyMoveDateFrom());
                 MOVE PROPERTY (filterMoneyMoveDateTo());
                 MOVE PROPERTY(nameFilterRegisterAccounting());
-                MOVE PROPERTY (nameFilterGrupOperation());
                 MOVE PROPERTY (nameFilterOperation());
+                MOVE PROPERTY (nameFilterGrupOperation());
                 MOVE PROPERTY (nameFilterCustomer());
                 MOVE PROPERTY(nameFilterEmployee());
             }
