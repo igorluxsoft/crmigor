@@ -27,7 +27,7 @@ minReportingMonthNoClosed = reportingMonth(minYearNoClosed(),minMonthNoClosed())
 CLASS Transfer 'Выплата';
 in 'Отм.' = DATA LOCAL NESTED BOOLEAN (Transfer);
 number 'Номер документа' = DATA STRING[15] (Transfer) CHARWIDTH 5;
-date 'Дата документа' = DATA DATE (Transfer);
+date 'Дата документа' = DATA DATE (Transfer) NONULL ;
 month 'Месяц' = DATA Month (Transfer) NONULL ;
 numberMonth 'Месяц' (Transfer t) = number(month(t));
 nameMonth 'Месяц' (Transfer t) = staticCaption(month(t)) CHARWIDTH 5;
@@ -324,12 +324,6 @@ FORM transfer 'Выплата'
     PROPERTIES(t) date, number, nameMonth, year, nameEmployee, nameOperation ON CHANGE changeMoveMoneyOprerationSalary(t), sum, note, nameTypePayment, codeRegisterAccounting
     EDIT Transfer OBJECT t
     EVENTS ON APPLY BEFORE {
-        IF date(t) > lastDayOfMonth(sumMonth(currentDate(), 1)) OR date(t) < firstDayOfMonth(sumMonth(currentDate(), -1)) THEN {
-            ASK 'Внимание ! \n\n Дата выплаты далеко отстоит от текущей даты : ' + toChar(date(t), 'DD.MM.YYYY') +
-                '\n\n Сохранить выплату ?' DO {
-            }
-            ELSE beforeCanceled() <- TRUE;
-        }
     }
 ;
 
@@ -492,20 +486,20 @@ WHEN LOCAL FORMS salary CHANGED(sumPay(Salary s)) DO {
 countInSalary = GROUP SUM 1 IF in(Salary s) AND s IS Salary BY reportingMonth(year(s),month(s));
 
 deleteInSalary 'Удалить' (Salary sal)  {
-    NEWSESSION NESTED(in[Salary]) {
-        IF countInSalary(reportingMonth(year(sal),month(sal))) THEN {
-            ASK 'Вы действительно хотите удалить отмеченные записи за '+ staticCaption(month(sal)) + ' ' + year(sal) + 'г. '+
-                '? \n\n Количество отмеченных записей "Зарплата сотрудника" за отчетный месяц: ' + countInSalary(reportingMonth(year(sal),month(sal))) DO {
+    IF countInSalary(reportingMonth(year(sal),month(sal))) THEN {
+        ASK 'Вы действительно хотите удалить отмеченные записи за '+ staticCaption(month(sal)) + ' ' + year(sal) + 'г. '+
+            '? \n\n Количество отмеченных записей "Зарплата сотрудника" за отчетный месяц: ' + countInSalary(reportingMonth(year(sal),month(sal))) DO {
+            NEWSESSION NESTED LOCAL {
                 DELETE Salary s WHERE s IS Salary AND in(s);
                 APPLY ;
-            }
+            }    
         }
-        ELSE {
-            ASK 'Вы действительно хотите удалить текущую запись "Зарплата сотрудника"  ?' DO {
-                NEWSESSION NESTED LOCAL {
-                    DELETE sal;
-                    APPLY ;
-                }
+    }
+    ELSE {
+        ASK 'Вы действительно хотите удалить текущую запись "Зарплата сотрудника"  ?' DO {
+            NEWSESSION NESTED LOCAL {
+                DELETE sal;
+                APPLY ;
             }
         }
     }
@@ -518,10 +512,14 @@ EXTEND FORM salaries
 countInTransfer = GROUP SUM 1 IF in(Transfer t) AND t IS Transfer;
 
 deleteInTransfer 'Удалить' (Transfer tr)  {
+    LOCAL NESTED lmess = BOOLEAN ();
+    lmess() <- NULL ;
+    
     IF countInTransfer() THEN {
         ASK 'Вы действительно хотите удалить отмеченные записи ?\n\n Будут удалены ВСЕ отмеченные записи независимо от отчетного месяца и отборов !'+
             ' \n\n Количество отмеченных записей "Выплаты": ' + countInTransfer()  DO {
             NEWSESSION NESTED LOCAL {
+                IF GROUP SUM 1 IF in(Transfer t) AND trim(codeOperation(t)) == 'ЗП' AND trim(codeRegisterAccounting(t)) == 'BYN/NAL LS' THEN lmess() <- TRUE;
                 DELETE Transfer t WHERE t IS Transfer AND in(t);
                 APPLY ;
             }
@@ -530,11 +528,13 @@ deleteInTransfer 'Удалить' (Transfer tr)  {
     ELSE {
         ASK 'Вы действительно хотите удалить текущую запись "Выплата"  ?' DO {
             NEWSESSION NESTED LOCAL {
+                IF trim(codeOperation(tr)) == 'ЗП' AND trim(codeRegisterAccounting(tr)) == 'BYN/NAL LS' THEN lmess() <- TRUE;
                 DELETE tr;
                 APPLY ;
             }
         }
     }
+    IF lmess() THEN MESSAGE 'Среди удаленных записей были записи с операцией ЗП по наличным BYN.\n\nНе забудьте откорректировать журнал "Движение денег"';
 } IMAGE 'delete.png';
 
 EXTEND FORM salaries
@@ -891,6 +891,126 @@ showSalariesEmployee 'По сотруднику' (Salary s){
 EXTEND FORM salaries
     PROPERTIES(s) showSalariesEmployee TOOLBAR 
 ;
+
+///// Для порождения записи "Движение денег" или "Выплаты" при вводе одной из них, 
+/////  если это операция - <ЗП> и регистр учета - <RUR/NAL  LS> 
+transfer = GROUP MAX Transfer t BY date(t), operation(t), employee(t), sum(t);
+moneyMove = GROUP MAX MoneyMove m BY date(m), operation(m), employee(m), summa(m);
+
+moneyMoveLocal = DATA LOCAL NESTED MoneyMove ();
+
+EXTEND FORM transfer
+    EVENTS ON APPLY BEFORE {
+        beforeCanceled() <- NULL;
+        IF date(t) > lastDayOfMonth(sumMonth(currentDate(), 1)) OR date(t) < firstDayOfMonth(sumMonth(currentDate(), -1)) THEN {
+            ASK 'Внимание ! \n\n Дата выплаты далеко отстоит от текущей даты : ' + toChar(date(t), 'DD.MM.YYYY') +
+                '\n\n Сохранить выплату ?' DO {
+            }
+            ELSE beforeCanceled() <- TRUE;
+        }
+        moneyMoveLocal() <- NULL ;
+        IF trim(PREV(codeOperation(t))) == 'ЗП' AND trim(PREV(codeRegisterAccounting(t))) == 'BYN/NAL LS' AND
+            moneyMove(PREV(date(t)), PREV(operation(t)), PREV(employee(t)), PREV(sum(t))) THEN {
+            moneyMoveLocal() <- moneyMove(PREV(date(t)), PREV(operation(t)), PREV(employee(t)), PREV(sum(t)));
+        }
+    }
+    
+    EVENTS ON APPLY AFTER {
+        NEWSESSION {
+            LOCAL NESTED lApply = BOOLEAN ();
+            lApply() <- NULL ;
+            
+            IF trim(codeOperation(t)) == 'ЗП' AND trim(codeRegisterAccounting(t)) == 'BYN/NAL LS' AND
+               NOT moneyMove(date(t), operation(t), employee(t), sum(t)) THEN {
+                IF moneyMoveLocal() THEN {
+                    date(moneyMoveLocal()) <- date(t);
+                    operation(moneyMoveLocal()) <- operation(t);
+                    employee(moneyMoveLocal()) <- employee(t);
+                    summa(moneyMoveLocal()) <- NUMERIC[14,2](sum(t));
+                    registerAccounting(moneyMoveLocal()) <- registerAccounting(t);
+                    note(moneyMoveLocal()) <- note(t);
+                }
+                ELSE NEW m = MoneyMove {
+                    date(m) <- date(t);
+                    operation(m) <- operation(t);
+                    employee(m) <- employee(t);
+                    summa(m) <- NUMERIC[12,2](sum(t));
+                    registerAccounting(m) <- registerAccounting(t);
+                    note(m) <- note(t);
+                    dateTimeEntry(moneyMoveLocal()) <- currentDateTime();
+                    userEntry(moneyMoveLocal()) <- currentUser();
+                }
+                lApply() <- TRUE ;
+            }
+            ELSE {
+                IF moneyMoveLocal() AND NOT (moneyMoveLocal() == moneyMove(date(t), operation(t), employee(t), sum(t))) THEN {
+                    DELETE moneyMoveLocal();
+                    lApply() <- TRUE ;
+                }
+            }
+            IF lApply() THEN {
+                APPLY ;
+                MESSAGE 'Добавлена новая запись или внесены изменения\n в соответствующую запись журнала "Движение денег"';
+            }
+        }    
+   }
+;
+
+transferLocal = DATA LOCAL NESTED Transfer ();
+
+EXTEND FORM editMoneyMove
+    EVENTS ON APPLY BEFORE {
+        transferLocal() <- NULL ;
+        IF trim(PREV(codeOperation(m))) == 'ЗП' AND trim(PREV(codeRegisterAccounting(m))) == 'BYN/NAL LS' AND
+            transfer(PREV(date(m)), PREV(operation(m)), PREV(employee(m)), PREV(summa(m))) THEN {
+            transferLocal() <- transfer(PREV(date(m)), PREV(operation(m)), PREV(employee(m)), PREV(summa(m)));
+        }
+    }
+    
+    EVENTS ON APPLY AFTER {
+        NEWSESSION {
+            LOCAL NESTED lApply = BOOLEAN ();
+            lApply() <- NULL ;
+            
+            IF trim(codeOperation(m)) == 'ЗП' AND trim(codeRegisterAccounting(m)) == 'BYN/NAL LS' AND
+               NOT transfer(date(m), operation(m), employee(m), summa(m)) THEN {
+                
+                IF transferLocal() THEN {
+                    date(transferLocal()) <- date(m);
+                    month(transferLocal()) <- extractMonth(date(m));
+                    year(transferLocal()) <- year(m);
+                    operation(transferLocal()) <- operation(m);
+                    employee(transferLocal()) <- employee(m);
+                    sum(transferLocal()) <- NUMERIC[12,2](summa(m));
+                    registerAccounting(transferLocal()) <- registerAccounting(m);
+                    note(transferLocal()) <- note(m);
+                }
+                ELSE NEW t = Transfer {
+                    date(t) <- date(m);
+                    month(t) <- extractMonth(date(m));
+                    year(t) <- year(m);
+                    operation(t) <- operation(m);
+                    employee(t) <- employee(m);
+                    sum(t) <- NUMERIC[12,2](summa(m));
+                    registerAccounting(t) <- registerAccounting(m);
+                    note(t) <- note(m);
+                }
+                lApply() <- TRUE ;
+            }
+            ELSE {
+                IF transferLocal() AND NOT (transferLocal() == transfer(date(m), operation(m), employee(m), summa(m))) THEN {
+                    DELETE transferLocal();
+                    lApply() <- TRUE ;
+                }
+            }
+            IF lApply() THEN {
+                IF closed(reportingMonth(extractYear(date(m)),extractMonth(date(m)))) THEN {MESSAGE 'Невозможно внести изменения в журнал "Выплаты",\n так как месяц закрыт';}
+                ELSE {
+                    APPLY ;
+                    MESSAGE 'Добавлена новая запись или внесены изменения\n в соответствующую запись журнала "Выплаты"';
+                }
+            }
+        }
+    }
+;
 /////
-
-

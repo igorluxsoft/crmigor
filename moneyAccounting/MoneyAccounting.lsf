@@ -97,7 +97,7 @@ analytics 'Аналитика' = DATA Analytics (MoneyMove);
 nameAnalytics 'Аналитика' = name(analytics(MoneyMove m)) CHARWIDTH 7;
 codeAnalytics 'Код аналитики' = code(analytics(MoneyMove m)) CHARWIDTH 3;
 
-date 'Дата' = DATA DATE (MoneyMove);
+date 'Дата' = DATA DATE (MoneyMove) NONULL ;
 summa 'Сумма' = DATA NUMERIC[14,2] (MoneyMove);
 summaUSD 'Сумма, USD' = DATA NUMERIC[14,2] (MoneyMove);
 balance 'Остаток после операции' = DATA NUMERIC[14,2] (MoneyMove);
@@ -389,23 +389,29 @@ addFromCurrent 'Добавить по тек.'(MoneyMove mmtek)  {
 countInMoneyMove = GROUP SUM 1 IF in(MoneyMove m) AND m IS MoneyMove;
 
 deleteInMoneyMove 'Удалить' (MoneyMove m)  {
-    NEWSESSION NESTED(in[MoneyMove]) {
-        IF countInMoneyMove() THEN {
-            ASK 'Вы действительно хотите удалить отмеченные записи  ?'+
-                '\n\n Количество отмеченных записей  ' + countInMoneyMove() DO {
+    LOCAL NESTED lmess = BOOLEAN ();
+    lmess() <- NULL ;
+    
+    IF countInMoneyMove() THEN {
+        ASK 'Вы действительно хотите удалить отмеченные записи  ?'+
+            '\n\n Количество отмеченных записей  ' + countInMoneyMove() DO {
+            NEWSESSION NESTED LOCAL {
+                IF GROUP SUM 1 IF in(MoneyMove mm) AND trim(codeOperation(mm)) == 'ЗП' AND trim(codeRegisterAccounting(mm)) == 'BYN/NAL LS' THEN lmess() <- TRUE;
                 DELETE MoneyMove mm WHERE mm IS MoneyMove AND in(mm);
                 APPLY ;
             }
         }
-        ELSE {
-            ASK 'Вы действительно хотите удалить текущую запись  ?' DO {
-                NEWSESSION NESTED LOCAL {
-                    DELETE m;
-                    APPLY ;
-                }
+    }
+    ELSE {
+        ASK 'Вы действительно хотите удалить текущую запись  ?' DO {
+            NEWSESSION NESTED LOCAL {
+                IF trim(codeOperation(m)) == 'ЗП' AND trim(codeRegisterAccounting(m)) == 'BYN/NAL LS' THEN lmess() <- TRUE;
+                DELETE m;
+                APPLY ;
             }
         }
     }
+    IF lmess() THEN MESSAGE 'Среди удаленных записей были записи с операцией ЗП по наличным BYN.\n\nНе забудьте откорректировать журнал "Выплаты"';
 } IMAGE 'delete.png';
 
 loadFile 'Загрузить' (MoneyMove m) {
