@@ -51,6 +51,7 @@ sum 'Сумма' = DATA NUMERIC[12,2] (TransferCopy);
 note 'Примечание' = DATA STRING (TransferCopy);
 registerAccounting 'Регистр учета' = DATA RegisterAccounting (TransferCopy) ;
 typePayment 'Вид платежа' = DATA TypePayment (TransferCopy);
+type 'Тип записи' = DATA STRING[1] (TransferCopy);
 
 numberMonth 'Месяц' (TransferCopy t) = number(month(t));
 nameMonth 'Месяц' (TransferCopy t) = staticCaption(month(t)) CHARWIDTH 5;
@@ -158,6 +159,7 @@ copyTables 'Копирование таблиц' () {
                 note(tc) <- note(t);
                 registerAccounting(tc) <- registerAccounting(t);
                 typePayment(tc) <- typePayment(t);
+                type(tc) <- type(t);
             }
             
             DELETE SalaryCopy s WHERE s IS SalaryCopy; // чистим таблицу с копией  <Зарплата сотрудников (копия)>
@@ -261,6 +263,7 @@ salariesRecovery 'Восстановление таблиц "Начислени�
                         note(t) <- note(tc);
                         registerAccounting(t) <- registerAccounting(tc);
                         typePayment(t) <- typePayment(tc);
+                        type(t) <- type(tc);
                     }
         
                     DELETE Salary s WHERE s IS Salary; // чистим таблицу <Зарплата сотрудников>
