@@ -117,13 +117,15 @@ userKorr 'Корр-ка пользователем' = DATA Employee (MoneyMove);
 nameUserKorr 'Корр-ка пользователем' (MoneyMove m) = name(userKorr(m)) CHARWIDTH 5;
 file = DATA FILE (MoneyMove);
 
-monthNumber 'Месяц' (MoneyMove m) = extractMonthNumber(date(m));
+monthNumberInt 'Месяц' (MoneyMove m) = extractMonthNumber(date(m));
+monthNumber 'Месяц' (MoneyMove m) = STRING[2] (lpad(trim(toChar(monthNumberInt(m),'99')),2,'0'));
 monthName 'Месяц' (MoneyMove m) = extractMonthName(date(m));
-quarter 'Квартал' (MoneyMove m) = CASE WHEN monthNumber(m) < 4 THEN 1
-    WHEN monthNumber(m) <  7 AND monthNumber(m) > 3 THEN 2
-    WHEN monthNumber(m) < 10 AND monthNumber(m) > 6 THEN 3
-    ELSE 4 ;
-year 'Год' (MoneyMove m) = extractYear(date(m));
+quarter 'Квартал' (MoneyMove m) = CASE WHEN monthNumberInt(m) < 4 THEN '1'
+    WHEN monthNumberInt(m) <  7 AND monthNumberInt(m) > 3 THEN '2'
+    WHEN monthNumberInt(m) < 10 AND monthNumberInt(m) > 6 THEN '3'
+    ELSE '4' ;
+yearInt 'Год' (MoneyMove m) = extractYear(date(m));
+year 'Год' (MoneyMove m) = STRING[4] (trim(toChar(extractYear(date(m)),'9999')));
 
 in 'Отм.' = DATA LOCAL BOOLEAN (MoneyMove);
 
