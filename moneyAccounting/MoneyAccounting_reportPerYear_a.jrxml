@@ -77,7 +77,7 @@
 				<textElement textAlignment="Center">
 					<font size="12" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["Депозитные  счета"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Cчета LuxSoft (на текущую дату)"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="498" y="18" width="322" height="18" uuid="6fee7822-62c7-452f-830e-d2c5ddf17838"/>

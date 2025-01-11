@@ -33,3 +33,10 @@ DESIGN payment {
 EXTEND FORM payments
     PROPERTIES(o) READONLY codeAnalytics, nameAnalytics
 ;
+
+operation(Payment p) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+operation(PaymentType t) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = name(t);
+
+EXTEND FORM paymentTypes
+    FILTERS active(operation(o))
+;

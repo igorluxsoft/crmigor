@@ -1,7 +1,6 @@
 MODULE MoneyAccounting;
 
-REQUIRE MoveMoneyOprerationDop, Payment, Expense, Time;
-//REQUIRE MoveMoney;
+REQUIRE PaymentDop, ExpenseDop, Time;
 
 NAMESPACE MoneyAccounting;
 
@@ -287,15 +286,15 @@ messPayment = DATA LOCAL STRING ();
 messExpense = DATA LOCAL STRING ();
 
 importDataPayment 'Импорт платежи' (DATE dv) {
-    FOR (Payment p IS Payment) AND date(p) >= dv AND (NOT type(p) OR NOT (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p)) OR  
+    FOR (Payment p IS Payment) AND date(p) >= dv AND (NOT type(p) OR NOT operation(p) OR  
       NOT (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB')) ORDER date(p),p DO {
         messPayment() <- messPayment() + '\n' + (OVERRIDE toChar(date(p),'DD.MM.YYYY'),'') + ' ' + (OVERRIDE toChar(sum(p),'9999999.99'),'') + ' ' + OVERRIDE nameType(p),'';
     }
     
-    FOR (Payment p IS Payment) AND date(p) >= dv AND type(p) AND (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p) AND NOT noImport(s)) AND 
+    FOR (Payment p IS Payment) AND date(p) >= dv AND type(p) AND operation(p) AND NOT noImport(operation(p)) AND 
       (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB') ORDER date(p),p NEW m = MoneyMove DO {
         date(m) <- date(p);
-        operation(m) <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+        operation(m) <- operation(p);
         summa(m) <- NUMERIC[14,2](sum(p));
         registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
                                       WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
@@ -303,6 +302,7 @@ importDataPayment 'Импорт платежи' (DATE dv) {
                                       WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS');
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
+        analytics(m) <- analytics(p);
         note(m) <- note(p);
         dateTimeEntry(m) <- currentDateTime();
         userEntry(m) <- currentUser();
@@ -310,15 +310,15 @@ importDataPayment 'Импорт платежи' (DATE dv) {
 }
 
 importDataExpense 'Импорт расходы' (DATE dv) {
-    FOR (Expense p IS Expense) AND date(p) >= dv AND (NOT type(p) OR NOT (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p)) OR
+    FOR (Expense p IS Expense) AND date(p) >= dv AND (NOT type(p) OR NOT operation(p) OR
       NOT (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB')) ORDER date(p),p DO {
         messExpense() <- messExpense() + '\n' + (OVERRIDE toChar(date(p),'DD.MM.YYYY'),'') + ' ' + (OVERRIDE toChar(sum(p),'9999999.99'),'') + ' ' + OVERRIDE nameType(p),'';
     }
     
-    FOR (Expense p IS Expense) AND date(p) >= dv AND type(p) AND (GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p) AND NOT noImport(s)) AND 
+    FOR (Expense p IS Expense) AND date(p) >= dv AND type(p) AND operation(p) AND NOT noImport(operation(p)) AND 
       (shortNameCurrency(p)='BYN' OR shortNameCurrency(p) = 'USD' OR shortNameCurrency(p) = 'EUR' OR shortNameCurrency(p) = 'RUB') ORDER date(p),p NEW m = MoneyMove DO {
         date(m) <- date(p);
-        operation(m) <- GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+        operation(m) <- operation(p);
         summa(m) <- -(NUMERIC[14,2](sum(p)));
         registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
                                       WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
@@ -326,6 +326,7 @@ importDataExpense 'Импорт расходы' (DATE dv) {
                                       WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS');
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
+        analytics(m) <- analytics(p);
         note(m) <- note(p);
         dateTimeEntry(m) <- currentDateTime();
         userEntry(m) <- currentUser();
@@ -377,6 +378,7 @@ addFromCurrent 'Добавить по тек.'(MoneyMove mmtek)  {
             operation(m) <- operation(mmtek);
             customer(m) <- customer(mmtek);
             legalEntity(m) <- legalEntity(mmtek);
+            analytics(m) <- analytics(mmtek);
             employee(m) <- employee(mmtek);
             summa(m) <- summa(mmtek);
             note(m) <- note(mmtek);
@@ -671,6 +673,7 @@ fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInte
         ELSE balanceUSD(mes) (-) balanceBeginYearUSD()) IF iterate(mes,1,12);
     
     PRINT reportPerYear XLSX ;
+    //PRINT reportPerYear ;
 }
 
 FORM reportPerYearParameters 'Отчет за год по регистрам учета'

@@ -26,3 +26,10 @@ EXTEND FORM expense
 EXTEND FORM expenses
     PROPERTIES(o) READONLY codeAnalytics, nameAnalytics
 ;
+
+operation(Expense p) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
+operation(ExpenseType t) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = name(t);
+
+EXTEND FORM expenseTypes
+    FILTERS active(operation(o))
+;
