@@ -28,8 +28,21 @@ EXTEND FORM expenses
 ;
 
 operation(Expense p) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
-operation(ExpenseType t) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = name(t);
+//operation(ExpenseType t) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = name(t);
+//
+//EXTEND FORM expenseTypes
+//    FILTERS active(operation(o))
+//;
 
+inactive 'Неактивный' = DATA BOOLEAN (ExpenseType);
+active 'Активный' (ExpenseType t) = NOT inactive(t);
 EXTEND FORM expenseTypes
-    FILTERS active(operation(o))
+    PROPERTIES(o) inactive
+    FILTERGROUP activegroup FILTER 'Активные' active(o) DEFAULT
+        FILTER 'Неактивные' inactive(o)
+;
+
+countExpenseType 'Кол-во записей' (ExpenseType t) = GROUP SUM 1 BY type(Expense p);
+EXTEND FORM expenseTypes
+    PROPERTIES(o) countExpenseType
 ;

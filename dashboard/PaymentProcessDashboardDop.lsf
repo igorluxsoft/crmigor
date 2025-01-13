@@ -1,0 +1,11 @@
+MODULE PaymentProcessDashboardDop;
+
+REQUIRE PaymentProcessDashboard, PaymentDop, ExpenseDop;
+
+NAMESPACE Dashboard;
+
+EXTEND FORM paymentProcessDasboard 
+    PROPERTIES(p) codeAnalytics, nameAnalytics
+    PROPERTIES(e) codeAnalytics, nameAnalytics
+;
+

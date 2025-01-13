@@ -217,7 +217,7 @@
 		<band height="54">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="18" width="70" height="18" uuid="7ca688b0-7534-4794-8a00-62e247dfd6da">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="120" y="18" width="70" height="18" backcolor="#D3D3D3" uuid="7ca688b0-7534-4794-8a00-62e247dfd6da">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -227,7 +227,7 @@
 				<textFieldExpression><![CDATA[$F{balanceBeginYearUSD()}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="190" y="18" width="810" height="18" uuid="5d808ee1-92e6-411f-883c-baa514fbc8bf">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="190" y="18" width="810" height="18" backcolor="#D3D3D3" uuid="5d808ee1-92e6-411f-883c-baa514fbc8bf">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right">
@@ -236,7 +236,7 @@
 				<textFieldExpression><![CDATA[$F{balance(r,mes).footer}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="18" width="120" height="18" uuid="5d725fac-f576-46f6-aa4d-3bfa78cf520f">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="0" y="18" width="120" height="18" backcolor="#D3D3D3" uuid="5d725fac-f576-46f6-aa4d-3bfa78cf520f">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -246,7 +246,7 @@
 				<textFieldExpression><![CDATA["Итого, остаток в USD"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="36" width="120" height="18" uuid="d2278a9a-6743-4b46-a892-99feb4cc80f9">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="0" y="36" width="120" height="18" backcolor="#D3D3D3" uuid="d2278a9a-6743-4b46-a892-99feb4cc80f9">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Left">
@@ -255,7 +255,7 @@
 				<textFieldExpression><![CDATA["Разница к пред.месяцу"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="36" width="70" height="18" uuid="986a34f5-3e67-4dd2-87dd-1c266e2a9e0e">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="120" y="36" width="70" height="18" backcolor="#D3D3D3" uuid="986a34f5-3e67-4dd2-87dd-1c266e2a9e0e">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -264,7 +264,7 @@
 				</textElement>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="190" y="36" width="810" height="18" uuid="021028cc-9203-4b42-8c82-791e85f82e53">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="190" y="36" width="810" height="18" backcolor="#D3D3D3" uuid="021028cc-9203-4b42-8c82-791e85f82e53">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right">

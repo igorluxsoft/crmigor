@@ -35,8 +35,21 @@ EXTEND FORM payments
 ;
 
 operation(Payment p) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = nameType(p);
-operation(PaymentType t) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = name(t);
+//operation(PaymentType t) = GROUP MAX (MoveMoneyOpreration s) IF code(s) = name(t);
+//
+//EXTEND FORM paymentTypes
+//    FILTERS active(operation(o))
+//;
 
+inactive 'Неактивный' = DATA BOOLEAN (PaymentType);
+active 'Активный' (PaymentType t) = NOT inactive(t);
 EXTEND FORM paymentTypes
-    FILTERS active(operation(o))
+    PROPERTIES(o) inactive
+    FILTERGROUP activegroup FILTER 'Активные' active(o) DEFAULT
+                            FILTER 'Неактивные' inactive(o)
+;
+
+countPaymentType 'Кол-во записей' (PaymentType t) = GROUP SUM 1 BY type(Payment p);
+EXTEND FORM paymentTypes
+    PROPERTIES(o) countPaymentType
 ;
