@@ -603,6 +603,8 @@ balanceBeginYearUSD 'Остаток на начало года, USD, итог' =
 rateBeginYearUSD 'Курс на начало года USD' = DATA LOCAL NESTED NUMERIC[20,13] (RegisterAccounting);
 deltaBalanceUSD 'Разница к пред.месяцу, USD, итог' = DATA LOCAL NESTED NUMERIC[14,2] (INTEGER);
 
+isReverseCourse 'Обратный курс' = DATA LOCAL NESTED BOOLEAN ();
+
 FORM reportPerYear 'Отчет за год по регистрам учета'
     OBJECTS r = RegisterAccounting
     PROPERTIES(r) code, name, koeff, dateTimeKorr, dateTimeBalance, balanceBeginYear, balanceBeginYearUSD, rateBeginYearUSD
@@ -672,6 +674,12 @@ fillReportPerYear 'Сформировать (XLS)' (INTEGER year, INTEGER isInte
     deltaBalanceUSD(INTEGER mes) <- (IF mes > 1 THEN balanceUSD(mes) (-) balanceUSD(mes-1)
         ELSE balanceUSD(mes) (-) balanceBeginYearUSD()) IF iterate(mes,1,12);
     
+    // обратный курс
+    IF isReverseCourse() THEN {
+        rateUSD(RegisterAccounting r, INTEGER mes) <- round2(1/rateUSD(r,mes));
+        rateBeginYearUSD(RegisterAccounting r) <- round2(1/rateBeginYearUSD(r));
+    }
+    
     PRINT reportPerYear XLSX ;
     //PRINT reportPerYear ;
 }
@@ -681,12 +689,14 @@ FORM reportPerYearParameters 'Отчет за год по регистрам у�
     PROPERTIES(year) y = VALUE
     OBJECTS isInternal = INTEGER PANEL
     PROPERTIES(isInternal) internal = VALUE
+    PROPERTIES() isReverseCourse PANEL 
     
     PROPERTIES fillReportPerYear(year, isInternal)
     
     EVENTS ON INIT {
         SEEK reportPerYearParameters.year = extractYear(currentDate());
         SEEK reportPerYearParameters.isInternal = 0;
+        isReverseCourse() <- TRUE;
     }
 ;
 
@@ -695,7 +705,8 @@ DESIGN reportPerYearParameters {
         fill = 1;
         NEW params {
             MOVE PROPERTY(y) {caption = 'Год';}
-            MOVE PROPERTY(internal) {caption = 'Внутренний/внешний (0 - все)';} 
+            MOVE PROPERTY(internal) {caption = 'Внутренний/внешний (0 - все)';}
+            MOVE PROPERTY(isReverseCourse()) {caption = 'Обратный курс';}
         }
         MOVE PROPERTY(fillReportPerYear(year, isInternal));
     }

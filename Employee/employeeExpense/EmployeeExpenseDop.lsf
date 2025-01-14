@@ -1,0 +1,64 @@
+MODULE EmployeeExpenseDop;
+
+REQUIRE EmployeeExpense, Salary;
+
+NAMESPACE Employee;
+
+inInterval 'Входит в интервал' (Month m, INTEGER y, Month mFrom, INTEGER yFrom, Month mTo, INTEGER yTo) = 
+    IF y*100+number(m) >= yFrom*100+number(mFrom) AND y*100+number(m) <= yTo*100+number(mTo) THEN TRUE ;
+
+importFromTransfer 'Импортировать' (Month mFrom, INTEGER yFrom, Month mTo, INTEGER yTo) {
+    NEWSESSION {
+        DELETE Expense e WHERE e IS Expense AND inInterval(month(e), year(e), mFrom, yFrom, mTo, yTo);
+
+        FOR sumTransfer(Employee emp, Month m, INTEGER y) AND inInterval(m, y, mFrom, yFrom, mTo, yTo) DO NEW e = Expense {
+            employee(e) <- emp;
+            year(e) <- y;
+            month(e) <- m;
+            type(e) <- GROUP MAX ExpenseType t IF name(t) == 'Зарплата';
+            sum(e) <- sumTransfer(emp, m, y);
+        }
+        APPLY ;
+    }
+}
+
+FORM importFromTransferParameters 'Импорт из журнала выплат'
+    OBJECTS mFrom = Month PANEL, yFrom = INTEGER PANEL
+    PROPERTIES mFrom 'Месяц' = name(mFrom) SELECTOR, yFrom 'Год' = VALUE(yFrom)
+    OBJECTS mTo = Month PANEL, yTo = INTEGER PANEL
+    PROPERTIES mTo 'Месяц' = name(mTo) SELECTOR, yTo 'Год' = VALUE(yTo)
+    
+    EVENTS ON INIT {
+        SEEK importFromTransferParameters.mFrom = extractMonth(currentDate());
+        SEEK importFromTransferParameters.yFrom = extractYear(currentDate());
+        SEEK importFromTransferParameters.mTo   = extractMonth(currentDate());
+        SEEK importFromTransferParameters.yTo   = extractYear(currentDate());
+    }
+    EVENTS ON OK {
+        importFromTransfer(mFrom, yFrom, mTo, yTo);
+    }
+;
+
+DESIGN importFromTransferParameters {
+    NEW report {
+        NEW header1 FIRST {
+            caption = 'Начало периода';
+            horizontal = TRUE;
+            MOVE PROPERTY (mFrom) { charWidth = 15; }
+            MOVE PROPERTY (yFrom) { charWidth = 5; }
+        }
+        NEW header2 {
+            caption = 'Конец периода';
+            horizontal = TRUE;
+            MOVE PROPERTY (mTo) { charWidth = 15; }
+            MOVE PROPERTY (yTo) { charWidth = 5; }
+        }
+    }
+    MOVE TOOLBARBOX;
+}
+
+importFromTransferParameters 'Импорт из журнала выплат' {
+    SHOW importFromTransferParameters FLOAT ;
+}
+
+EXTEND FORM expenses PROPERTIES importFromTransferParameters() DRAW o TOOLBAR;
