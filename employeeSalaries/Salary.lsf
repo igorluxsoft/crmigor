@@ -873,7 +873,7 @@ EXTEND FORM salaries
     PROPERTIES(s) showSalariesEmployee TOOLBAR 
 ;
 
-///// Сверка сумм в журналах "Выплаты" и "Расходы"
+///// Сверка сумм в журналах "Выплаты" и "Расходы" по безналичным рублям
 sumTransfer 'Сумма в журнале "Выплаты": ' = DATA LOCAL NESTED NUMERIC[14,2];
 sumExpenses 'Сумма в журнале "Расходы": ' = DATA LOCAL NESTED NUMERIC[14,2];
 sumDelta 'Разница: ' = DATA LOCAL NESTED NUMERIC[14,2];
@@ -893,18 +893,12 @@ FORM reportForComparisonSumExpenses 'Сверка сумм в журналах "
     OBJECTS df = DATE PANEL, dt = DATE PANEL
     PROPERTIES df 'Дата с' = VALUE(df), dt 'Дата по' = VALUE(dt) 
     PROPERTIES READONLY sumTransfer(), sumExpenses(), sumDelta()
-//    OBJECTS o = MoveMoneyOpreration PANEL
-//    PROPERTIES(o) name SELECTOR
-//    OBJECTS r = RegisterAccounting PANEL
-//    PROPERTIES(r) code SELECTOR
 
     PROPERTIES fillReportForComparisonSumExpenses(df, dt)
     
     EVENTS ON INIT {
         SEEK reportForComparisonSumExpenses.df = firstDayOfMonth(currentDate());
         SEEK reportForComparisonSumExpenses.dt = currentDate();
-//        SEEK reportForComparisonSumExpenses.o = uniqueCode('ЗП', '2');
-//        SEEK reportForComparisonSumExpenses.r = registerAccounting('BYN/BN  LS');
     }
 ;
 
@@ -938,3 +932,65 @@ NAVIGATOR {
     }
 }
 
+///// Сверка сумм в журналах "Выплаты" и "Движение денег" по наличным рублям
+sumTr 'Сумма в журнале "Выплаты"' = DATA LOCAL NESTED NUMERIC[14,2] (DATE, Employee);
+sumMm 'Сумма в журнале "Движение денег"' = DATA LOCAL NESTED NUMERIC[14,2] (DATE, Employee);
+countDiffSum 'Количество расхождений' = DATA LOCAL NESTED INTEGER ();
+
+FORM reportForComparisonSumCashRuble 'Сверка сумм в журналах "Выплаты" и "Движение денег" по наличным рублям'
+    OBJECTS ob = (d = DATE, e = Employee)
+    PROPERTIES d = VALUE(d)
+    PROPERTIES(e) fullName
+    PROPERTIES sumTr(d,e), sumMm(d,e)
+    
+    ORDERS d, fullName(e)
+    FILTERS sumTr(d,e) (-) sumMm(d,e)
+;
+
+fillReportForComparisonSumCashRuble 'Сформировать' (DATE df, DATE dt) {
+    sumTr(DATE d, Employee e) <- NULL ;
+    sumMm(DATE d, Employee e) <- NULL ;
+    
+    sumTr(DATE d, Employee e) <- GROUP SUM sum(Transfer t) IF date(t)>=df AND date(t)<=dt AND date(t)=d AND employee(t)=e AND 
+                                    trim(codeOperation(t)) == 'ЗП' AND trim(codeRegisterAccounting(t)) == 'BYN/NAL LS';
+    sumMm(DATE d, Employee e) <- GROUP SUM summa(MoneyMove m) IF date(m)>=df AND date(m)<=dt AND date(m)=d AND employee(m)=e AND
+        trim(codeOperation(m)) == 'ЗП' AND trim(codeRegisterAccounting(m)) == 'BYN/NAL LS';
+    
+    countDiffSum() <- GROUP SUM 1 IF sumTr(DATE d, Employee e) (-) sumMm(d,e) ;
+    
+    IF countDiffSum() AND countDiffSum() > 0 THEN 
+        PRINT reportForComparisonSumCashRuble XLSX;
+    ELSE MESSAGE 'Расхождений при сверке сумм не обнаружено';
+}
+
+FORM reportForComparisonSumCashRubleParameters 'Сверка сумм в журналах "Выплаты" и "Движение денег" по наличным рублям'
+    OBJECTS df = DATE PANEL, dt = DATE PANEL
+    PROPERTIES df 'Дата с' = VALUE(df), dt 'Дата по' = VALUE(dt)
+
+    PROPERTIES fillReportForComparisonSumCashRuble(df, dt)
+
+    EVENTS ON INIT {
+        SEEK reportForComparisonSumCashRubleParameters.df = firstDayOfMonth(currentDate());
+        SEEK reportForComparisonSumCashRubleParameters.dt = currentDate();
+    }
+;
+
+DESIGN reportForComparisonSumCashRubleParameters {
+    NEW report {
+        fill = 1;
+        NEW params {
+            MOVE PROPERTY(df);
+            MOVE PROPERTY(dt);
+        }
+        MOVE PROPERTY(fillReportForComparisonSumCashRuble(df, dt));
+    }
+    MOVE TOOLBARBOX;
+}
+
+NAVIGATOR {
+    finance {
+        reports {
+            NEW reportForComparisonSumCashRubleParameters;
+        }
+    }
+}

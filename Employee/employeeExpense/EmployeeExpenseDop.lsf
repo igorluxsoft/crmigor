@@ -7,39 +7,39 @@ NAMESPACE Employee;
 inInterval 'Входит в интервал' (Month m, INTEGER y, Month mFrom, INTEGER yFrom, Month mTo, INTEGER yTo) = 
     IF y*100+number(m) >= yFrom*100+number(mFrom) AND y*100+number(m) <= yTo*100+number(mTo) THEN TRUE ;
 
-importFromTransfer 'Импортировать' (Month mFrom, INTEGER yFrom, Month mTo, INTEGER yTo) {
+importFromSalary 'Импортировать' (Month mFrom, INTEGER yFrom, Month mTo, INTEGER yTo) {
     NEWSESSION {
         DELETE Expense e WHERE e IS Expense AND inInterval(month(e), year(e), mFrom, yFrom, mTo, yTo);
-
-        FOR sumTransfer(Employee emp, Month m, INTEGER y) AND inInterval(m, y, mFrom, yFrom, mTo, yTo) DO NEW e = Expense {
-            employee(e) <- emp;
-            year(e) <- y;
-            month(e) <- m;
+        
+        FOR sumPay(Salary s) AND inInterval(month(s), year(s), mFrom, yFrom, mTo, yTo) DO NEW e = Expense {
+            employee(e) <- employee(s);
+            year(e) <- year(s);
+            month(e) <- month(s);
             type(e) <- GROUP MAX ExpenseType t IF name(t) == 'Зарплата';
-            sum(e) <- sumTransfer(emp, m, y);
+            sum(e) <- sumPay(s);
         }
         APPLY ;
     }
 }
 
-FORM importFromTransferParameters 'Импорт из журнала выплат'
+FORM importFromSalaryParameters 'Импорт из журнала зарплат'
     OBJECTS mFrom = Month PANEL, yFrom = INTEGER PANEL
     PROPERTIES mFrom 'Месяц' = name(mFrom) SELECTOR, yFrom 'Год' = VALUE(yFrom)
     OBJECTS mTo = Month PANEL, yTo = INTEGER PANEL
     PROPERTIES mTo 'Месяц' = name(mTo) SELECTOR, yTo 'Год' = VALUE(yTo)
     
     EVENTS ON INIT {
-        SEEK importFromTransferParameters.mFrom = extractMonth(currentDate());
-        SEEK importFromTransferParameters.yFrom = extractYear(currentDate());
-        SEEK importFromTransferParameters.mTo   = extractMonth(currentDate());
-        SEEK importFromTransferParameters.yTo   = extractYear(currentDate());
+        SEEK importFromSalaryParameters.mFrom = extractMonth(currentDate());
+        SEEK importFromSalaryParameters.yFrom = extractYear(currentDate());
+        SEEK importFromSalaryParameters.mTo   = extractMonth(currentDate());
+        SEEK importFromSalaryParameters.yTo   = extractYear(currentDate());
     }
     EVENTS ON OK {
-        importFromTransfer(mFrom, yFrom, mTo, yTo);
+        importFromSalary(mFrom, yFrom, mTo, yTo);
     }
 ;
 
-DESIGN importFromTransferParameters {
+DESIGN importFromSalaryParameters {
     NEW report {
         NEW header1 FIRST {
             caption = 'Начало периода';
@@ -57,8 +57,8 @@ DESIGN importFromTransferParameters {
     MOVE TOOLBARBOX;
 }
 
-importFromTransferParameters 'Импорт из журнала выплат' {
-    SHOW importFromTransferParameters FLOAT ;
+importFromSalaryParameters 'Импорт из журнала зарплат' {
+    SHOW importFromSalaryParameters FLOAT ;
 }
 
-EXTEND FORM expenses PROPERTIES importFromTransferParameters() DRAW o TOOLBAR;
+EXTEND FORM expenses PROPERTIES importFromSalaryParameters() DRAW o TOOLBAR;
