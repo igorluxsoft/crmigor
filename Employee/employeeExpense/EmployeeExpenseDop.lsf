@@ -8,6 +8,11 @@ inInterval 'Входит в интервал' (Month m, INTEGER y, Month mFrom, 
     IF y*100+number(m) >= yFrom*100+number(mFrom) AND y*100+number(m) <= yTo*100+number(mTo) THEN TRUE ;
 
 importFromSalary 'Импортировать' (Month mFrom, INTEGER yFrom, Month mTo, INTEGER yTo) {
+    IF toDateFormat('01' + lpad(TEXT (number(mFrom)), 2, '0') + STRING[4](yFrom), 'DDMMYYYY') < DATE('2024-06-01') THEN {
+        MESSAGE 'Запрещён ввод даты начала периода ранее 01.06.2024 г.';
+        RETURN ;
+    }
+    
     NEWSESSION {
         DELETE Expense e WHERE e IS Expense AND inInterval(month(e), year(e), mFrom, yFrom, mTo, yTo);
         

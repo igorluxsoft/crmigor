@@ -157,19 +157,6 @@ DESIGN reportingMonth {
     }
 }
 
-newReportingMonth 'Добавить отч.месяц'() {
-    NEWSESSION {
-        NEW r = ReportingMonth {
-            DIALOG reportingMonth OBJECTS r = r NOMANAGESESSION DO {
-                
-            } ELSE {
-                CANCEL;
-            }
-            APPLY;
-        }    
-    }
-} IMAGE 'add.png';
-
 /// Исп. для редактирования записи (корр-ка полей без полей Год и Месяц !!!)
 FORM editReportingMonth 'Отчетный месяц'
     OBJECTS r = ReportingMonth PANEL
@@ -387,6 +374,54 @@ addAllSalaries 'Добавить сотрудников' (ReportingMonth r) {
     
 } TOOLBAR ;
 
+///// Перенести отклонение c пред.месяца
+transferDeviaNextMonth 'Отклонение c пред.месяца' (ReportingMonth r) {
+
+    LOCAL lYear = INTEGER ();
+    LOCAL lMonth = Month ();
+    lYear() <- year(r);
+    lMonth() <- month(r);
+    IF number(lMonth()) > 1 THEN
+        lMonth() <- month(number(lMonth()) - 1) ;
+    ELSE {
+        lMonth() <- month(12);
+        lYear() <- lYear() - 1;
+    }
+
+    IF NOT reportingMonth(lYear(),lMonth()) THEN {
+        MESSAGE 'Не определён предыдущий месяц: ' + staticCaption(lMonth()) + ' ' + lYear() + 'г.';
+        RETURN ;
+    }
+
+    LOCAL countTransfer = INTEGER();
+    countTransfer() <- OVERRIDE (GROUP SUM 1 IF month(Transfer t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗП', '2') AND type(t)=='1'), 0;
+    LOCAL countDeltaReal = INTEGER();
+    countDeltaReal() <- OVERRIDE (GROUP SUM 1 IF month(Salary s) == lMonth() AND year(s) == lYear() AND deltaReal(s) AND deltaReal(s) != 0.0), 0;
+
+    ASK 'Количество отклонений за ' + staticCaption(lMonth()) + ' ' + lYear() + 'г. :  ' + countDeltaReal() + '\n\n' +
+        'Количество уже существующих строк с отклонениями за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countTransfer() + '\n' +
+        (IF countTransfer() > 0 THEN '  Эти строки будут удалены !!!\n\n' ELSE '\n') +
+        'Вы действительно хотите сформировать строки с отклонениями ?' DO {
+
+        IF countTransfer() THEN {
+            DELETE Transfer t WHERE t IS Transfer AND month(t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗП', '2') AND type(t)=='1';
+        }
+        FOR month(Salary s) == lMonth() AND year(s) == lYear() AND deltaReal(s) AND deltaReal(s) != 0.0 DO NEW t = Transfer {
+            date(t) <- toDateFormat('01' + lpad(TEXT (number(month(r))), 2, '0') + year(r), 'DDMMYYYY');
+            month(t) <- month(r);
+            year(t) <- year(r);
+            operation(t) <- uniqueCode('ЗП', '2');
+            employee(t) <- employee(s) ;
+            sum(t) <- - deltaReal(s);
+            registerAccounting(t) <- registerAccounting('BYN/BN  LS');
+            type(t) <- '1';
+            note(t) <- 'ОТКЛОНЕНИЕ';
+        }
+        APPLY ;
+    }
+}
+/////
+
 background(ReportingMonth r) = CASE WHEN NOT closed(r) THEN RGB(212,255,212);
 
 background(Salary s) = CASE WHEN sumPay(s) (-) sumTransfer(s) < 0 THEN RGB(255,214,212)
@@ -408,10 +443,10 @@ newTransfer 'Добавить' (ReportingMonth r, Salary s) {
 FORM salaries 'Начисление зарплаты'
     OBJECTS r = ReportingMonth
     PROPERTIES(r) READONLY BACKGROUND background(r) nameMonth, year, curRate, sumBonus, closed, note
-    PROPERTIES(r) addAllSalaries
-    PROPERTIES NEWSESSION newReportingMonth() DRAW r TOOLBAR
     PROPERTIES(r) NEWSESSION editReportingMonth TOOLBAR 
-    PROPERTIES(r) READONLYIF countSalaryReportingMonth(r) OR closed(r) NEWSESSION DELETE
+    PROPERTIES(r) READONLYIF countSalaryReportingMonth(r) OR closed(r) NEWSESSION DELETE TOOLBAR AFTER editReportingMonth(r)
+    PROPERTIES(r) addAllSalaries TOOLBAR 
+    PROPERTIES(r) READONLYIF closed(r) transferDeviaNextMonth TOOLBAR AFTER addAllSalaries(r)
     
     OBJECTS s = Salary
     PROPERTIES(s) BACKGROUND background(s) in
@@ -465,6 +500,32 @@ NAVIGATOR {
         NEW salaries BEFORE nsi;
     }
 }
+
+newReportingMonth 'Добавить отч.месяц'() {
+    NEWSESSION {
+        NEW r = ReportingMonth {
+            DIALOG reportingMonth OBJECTS r = r NOMANAGESESSION DO {
+                addAllSalaries(r);
+                transferDeviaNextMonth(r);
+                SEEK salaries.r = r;
+            } ELSE {
+                CANCEL;
+            }
+            APPLY;
+        }
+    }
+} IMAGE 'add.png';
+
+EXTEND FORM salaries 
+    PROPERTIES NEWSESSION newReportingMonth() DRAW r TOOLBAR 
+;
+
+DESIGN salaries {
+    TOOLBAR (r) {
+        MOVE PROPERTY(newReportingMonth()) FIRST;
+    }
+}
+
 
 WHEN LOCAL FORMS salary CHANGED(sumPay(Salary s)) DO {
     IF curRate(reportingMonth(year(s),month(s))) THEN sumPayUSD(s) <- round2(sumPay(s) / curRate(reportingMonth(year(s),month(s)))) ;
@@ -625,57 +686,6 @@ generateTransfersCurrentMonthCash 'Сформ-ть выплаты (нал)' (Rep
 //EXTEND FORM salaries
 //    PROPERTIES(r) READONLYIF closed(r) generateTransfersCurrentMonthCash TOOLBAR
 //;
-
-///// Перенести отклонение на след.месяц
-transferDeviaNextMonth 'Отклонение на след.месяц' (ReportingMonth r) {
-    
-    LOCAL lYear = INTEGER ();
-    LOCAL lMonth = Month ();
-    lYear() <- year(r);
-    lMonth() <- month(r);
-    IF number(lMonth()) < 12 THEN
-        lMonth() <- month(number(lMonth()) + 1) ;
-    ELSE {
-        lMonth() <- month(1);
-        lYear() <- lYear() + 1;
-    }
-    
-    IF NOT reportingMonth(lYear(),lMonth()) THEN {
-        MESSAGE 'Не введён отчётный месяц: ' + staticCaption(lMonth()) + ' ' + lYear() + 'г.';
-        RETURN ;
-    }
-    
-    LOCAL countTransfer = INTEGER();
-    countTransfer() <- OVERRIDE (GROUP SUM 1 IF month(Transfer t) == lMonth() AND year(t) == lYear() AND operation(t) == uniqueCode('ЗП', '2') AND type(t)=='1'), 0;
-    LOCAL countDeltaReal = INTEGER();
-    countDeltaReal() <- OVERRIDE (GROUP SUM 1 IF month(Salary s) == month(r) AND year(s) == year(r) AND deltaReal(s) AND deltaReal(s) != 0.0), 0;
-    
-    ASK 'Количество отклонений за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countDeltaReal() + '\n\n' +
-        'Количество уже существующих строк с отклонениями за ' + staticCaption(lMonth()) + ' ' + lYear() + 'г. :  ' + countTransfer() + '\n' +
-        (IF countTransfer() > 0 THEN '  Эти строки будут удалены !!!\n\n' ELSE '\n') +
-            'Вы действительно хотите сформировать строки с отклонениями ?' DO {
-        
-        IF countTransfer() THEN {
-            DELETE Transfer t WHERE t IS Transfer AND month(t) == lMonth() AND year(t) == lYear() AND operation(t) == uniqueCode('ЗП', '2') AND type(t)=='1';
-        }
-        FOR month(Salary s) == month(r) AND year(s) == year(r) AND deltaReal(s) AND deltaReal(s) != 0.0 DO NEW t = Transfer {
-            date(t) <- toDateFormat('01' + lpad(TEXT (number(lMonth())), 2, '0') + lYear(), 'DDMMYYYY');
-            month(t) <- lMonth();
-            year(t) <- lYear();
-            operation(t) <- uniqueCode('ЗП', '2');
-            employee(t) <- employee(s) ;
-            sum(t) <- - deltaReal(s);
-            registerAccounting(t) <- registerAccounting('BYN/BN  LS');
-            type(t) <- '1';
-            note(t) <- 'ОТКЛОНЕНИЕ';
-        }
-        APPLY ;
-    }
-}    
-
-EXTEND FORM salaries
-    PROPERTIES(r) READONLYIF closed(r) transferDeviaNextMonth TOOLBAR
-;
 
 employee = GROUP MAX Employee e BY personalAccount(e);
 
@@ -953,7 +963,7 @@ fillReportForComparisonSumCashRuble 'Сформировать' (DATE df, DATE dt
     
     sumTr(DATE d, Employee e) <- GROUP SUM sum(Transfer t) IF date(t)>=df AND date(t)<=dt AND date(t)=d AND employee(t)=e AND 
                                     trim(codeOperation(t)) == 'ЗП' AND trim(codeRegisterAccounting(t)) == 'BYN/NAL LS';
-    sumMm(DATE d, Employee e) <- GROUP SUM summa(MoneyMove m) IF date(m)>=df AND date(m)<=dt AND date(m)=d AND employee(m)=e AND
+    sumMm(DATE d, Employee e) <- GROUP SUM abs(summa(MoneyMove m)) IF date(m)>=df AND date(m)<=dt AND date(m)=d AND employee(m)=e AND
         trim(codeOperation(m)) == 'ЗП' AND trim(codeRegisterAccounting(m)) == 'BYN/NAL LS';
     
     countDiffSum() <- GROUP SUM 1 IF sumTr(DATE d, Employee e) (-) sumMm(d,e) ;
