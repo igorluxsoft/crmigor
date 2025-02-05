@@ -382,12 +382,13 @@ EXTEND FORM resources
 DESIGN resources {
     BOX{
         NEW mainContainer{
-            type = SPLITV;
+            //type = SPLITV;
             fill = 1;
             MOVE BOX(r);
             NEW tabContainer{
                 fill = 1;
-                type = TABBED;
+                //type = TABBED;
+                tabbed = TRUE ;
                 MOVE BOX(d);
                 NEW documentHistory { 
                     caption = 'История';
@@ -396,7 +397,8 @@ DESIGN resources {
                     fill = 1;                   
                     NEW historyTabs {
                          fill = 1;
-                         type = TABBED;
+                         //type = TABBED;
+                        tabbed = TRUE ;
                          NEW historyLog{
                             caption = 'По ресурсу';
                             //type = CONTAINERV;
