@@ -123,10 +123,10 @@ DESIGN resource {
     BOX (r) {
         fill = 1;
         //type = CONTAINERV;
-        horizontal = TRUE ;
+        horizontal = FALSE ;
         GROUP(,r){
             //type = CONTAINERV;
-            horizontal = TRUE ;
+            horizontal = FALSE ;
             MOVE PROPERTY (name(r)) {charWidth=100;}
             MOVE PROPERTY (nameResponsiblePerson(r)) {charWidth=100;}
             MOVE PROPERTY (inUse(r));
@@ -393,7 +393,7 @@ DESIGN resources {
                 NEW documentHistory { 
                     caption = 'История';
                     //type = CONTAINERV;
-                    horizontal = TRUE ;
+                    horizontal = FALSE ;
                     fill = 1;                   
                     NEW historyTabs {
                          fill = 1;
@@ -402,7 +402,7 @@ DESIGN resources {
                          NEW historyLog{
                             caption = 'По ресурсу';
                             //type = CONTAINERV;
-                            horizontal = TRUE ;
+                            horizontal = FALSE ;
                             MOVE BOX(dLog);
                          }
                          NEW detailLog{
