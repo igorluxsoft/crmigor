@@ -122,9 +122,11 @@ FORM resource 'Ресурс'
 DESIGN resource {
     BOX (r) {
         fill = 1;
-        type = CONTAINERV;
+        //type = CONTAINERV;
+        horizontal = TRUE ;
         GROUP(,r){
-            type = CONTAINERV;
+            //type = CONTAINERV;
+            horizontal = TRUE ;
             MOVE PROPERTY (name(r)) {charWidth=100;}
             MOVE PROPERTY (nameResponsiblePerson(r)) {charWidth=100;}
             MOVE PROPERTY (inUse(r));
@@ -389,14 +391,16 @@ DESIGN resources {
                 MOVE BOX(d);
                 NEW documentHistory { 
                     caption = 'История';
-                    type = CONTAINERV; 
+                    //type = CONTAINERV;
+                    horizontal = TRUE ;
                     fill = 1;                   
                     NEW historyTabs {
                          fill = 1;
                          type = TABBED;
                          NEW historyLog{
                             caption = 'По ресурсу';
-                            type = CONTAINERV;
+                            //type = CONTAINERV;
+                            horizontal = TRUE ;
                             MOVE BOX(dLog);
                          }
                          NEW detailLog{
