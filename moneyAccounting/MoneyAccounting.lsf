@@ -274,7 +274,7 @@ recalculateSummaUSD 'Перерасчет сумм USD' () {
 }
 
 /// Импорт из журналов "Платежи" и "Расходы"
-FORM inputParameters 'Параметры импорта из бух. LuxSoft'
+FORM inputParameters 'Параметры импорта из бухгалтерии'
     OBJECTS dateimp = DATE PANEL
     PROPERTIES dateimp 'Дата начала импорта' = VALUE (dateimp)
     EVENTS ON INIT {
@@ -333,7 +333,7 @@ importDataExpense 'Импорт расходы' (DATE dv) {
     }
 }
 
-importData 'Импорт из бух. LuxSoft' () {
+importData 'Импорт из бухгалтерии' () {
     messPayment() <- '';
     messExpense() <- '';
     
@@ -362,11 +362,11 @@ importData 'Импорт из бух. LuxSoft' () {
         IF length(messPayment()) > 5 OR length(messExpense()) > 5 THEN {
             IF length(messPayment()) > 5 THEN messPayment() <- '    ПЛАТЕЖИ :\n' + messPayment();
             IF length(messExpense()) > 5 THEN messExpense() <- '\n\n    РАСХОДЫ :\n' + messExpense();
-            mess() <- 'Некорректные записи при импорте из бух. LuxSoft :\n\n' + messPayment() + messExpense();
+            mess() <- 'Некорректные записи при импорте из бухгалтерии :\n\n' + messPayment() + messExpense();
             MESSAGE mess();
         }
         APPLY ;
-    } ELSE MESSAGE 'Выполнение импорта из бух. LuxSoft отменено';
+    } ELSE MESSAGE 'Выполнение импорта из бухгалтерии отменено';
 }
 
 ///// Добавить запись по текущей
