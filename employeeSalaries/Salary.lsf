@@ -100,6 +100,11 @@ countSalaryReportingMonth(ReportingMonth r) = GROUP SUM 1 IF year(Salary s)==yea
 absenceHours 'Личное за месяц' (Salary s) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(s) AND extractYear(d)=year(s) AND extractMonth(d)=month(s) AND 
     nameReason(a)='Личное';
 
+// Разница в окладе с предыдущим месяцем
+sumSalaryPrev 'Оклад предыдущего месяца' = IF numberMonth(Salary s) > 1 THEN sumSalary(salary(employee(s),year(s),month(number(month(s))-1)))
+    ELSE sumSalary(salary(employee(s),year(s)-1,month(12)));
+deltaSumSalary 'Разница в окладе' = sumSalary(Salary s) (-) sumSalaryPrev(s);
+
 /// Вид платежа
 CLASS TypePayment 'Вид платежа';
 TABLE typePayment(TypePayment);
@@ -387,17 +392,17 @@ transferDeviaNextMonth 'Отклонение c пред.месяца' (Reporting
         lMonth() <- month(12);
         lYear() <- lYear() - 1;
     }
-
+    
     IF NOT reportingMonth(lYear(),lMonth()) THEN {
         MESSAGE 'Не определён предыдущий месяц: ' + staticCaption(lMonth()) + ' ' + lYear() + 'г.';
         RETURN ;
     }
-
+    
     LOCAL countTransfer = INTEGER();
     countTransfer() <- OVERRIDE (GROUP SUM 1 IF month(Transfer t) == month(r) AND year(t) == year(r) AND operation(t) == uniqueCode('ЗП', '2') AND type(t)=='1'), 0;
     LOCAL countDeltaReal = INTEGER();
     countDeltaReal() <- OVERRIDE (GROUP SUM 1 IF month(Salary s) == lMonth() AND year(s) == lYear() AND deltaReal(s) AND deltaReal(s) != 0.0), 0;
-
+    
     ASK 'Количество отклонений за ' + staticCaption(lMonth()) + ' ' + lYear() + 'г. :  ' + countDeltaReal() + '\n\n' +
         'Количество уже существующих строк с отклонениями за ' + staticCaption(month(r)) + ' ' + year(r) + 'г. :  ' + countTransfer() + '\n' +
         (IF countTransfer() > 0 THEN '  Эти строки будут удалены !!!\n\n' ELSE '\n') +
@@ -452,7 +457,7 @@ FORM salaries 'Начисление зарплаты'
     PROPERTIES(s) BACKGROUND background(s) in
     PROPERTIES(s) READONLY BACKGROUND background(s) nameEmployee, sumSalary, sumBonus, sumFine, sumPay, sumPayUSD, payExtra, payExtraCash, deltaPay, sumTransfer BACKGROUND RGB(250,250,210) 
     PROPERTIES(s) READONLY BACKGROUND background(s) deltaReal BACKGROUND RGB(255,240,245), isReturn, note1, note2, ktu, absenceHours
-    PROPERTIES(s) READONLY BACKGROUND background(s) numberMonth, nameMonth, year
+    PROPERTIES(s) READONLY BACKGROUND background(s) numberMonth, nameMonth, year, deltaSumSalary
     PROPERTIES(s) READONLYIF closed(r) NEWSESSION NEW, EDIT
     ORDERS nameEmployee(s)
     FILTERS month(s)==month(r) AND year(s)==year(r)
