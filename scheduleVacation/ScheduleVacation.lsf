@@ -1,0 +1,157 @@
+MODULE ScheduleVacation;
+
+REQUIRE EmployeeDop, Dashboard;
+
+NAMESPACE ScheduleVacation;
+
+TABLE scheduleVacationYear(Employee, INTEGER);
+countIsVacationPrev 'Остаток на 01.01' = DATA NUMERIC[10,5] (Employee, INTEGER);
+
+TABLE scheduleVacationDate(Employee, DATE);
+isVacation '' = DATA BOOLEAN (Employee, DATE);
+
+selectPeriod 'Период' = DATA LOCAL NESTED INTEGER ();
+
+countIsVacation 'Всего дней отпуска за год' (Employee e, INTEGER y) = GROUP SUM 1 IF isVacation(e, DATE d) AND extractYear(d)==y CHARWIDTH 13;
+
+daysIsVacation ' ' (Employee e, INTEGER y) = TEXT (GROUP CONCAT (toChar(DATE dt,'DD.')+toChar(dt,'MM')) IF isVacation(e,dt) AND extractYear(dt)==y,'; ' ORDER dt);
+
+beginDatePeriod 'Первая дата периода' (INTEGER y) = CASE 
+    WHEN selectPeriod()=1 THEN toDateFormat('0101' + STRING[4](y), 'DDMMYYYY')
+    WHEN selectPeriod()=2 THEN toDateFormat('0107' + STRING[4](y), 'DDMMYYYY')
+//    WHEN selectPeriod()=3 THEN toDateFormat('0107' + STRING[4](y), 'DDMMYYYY')
+//    WHEN selectPeriod()=4 THEN toDateFormat('0110' + STRING[4](y), 'DDMMYYYY')
+;
+
+endDatePeriod 'Последняя дата периода' (INTEGER y) = CASE
+    WHEN selectPeriod()=1 THEN toDateFormat('3107' + STRING[4](y), 'DDMMYYYY')
+    WHEN selectPeriod()=2 THEN toDateFormat('3112' + STRING[4](y), 'DDMMYYYY')
+//    WHEN selectPeriod()=3 THEN toDateFormat('3009' + STRING[4](y), 'DDMMYYYY')
+//    WHEN selectPeriod()=4 THEN toDateFormat('3112' + STRING[4](y), 'DDMMYYYY')
+;
+
+
+isPeriod1 'Январь - Июль' () {
+    selectPeriod() <- 1;
+}
+isPeriod2 'Июль - Декабрь' () {
+    selectPeriod() <- 2;
+}
+//isPeriod3 'Июль - Октябрь' () {
+//    selectPeriod() <- 3;
+//}
+//isPeriod4 'Октябрь - Декабрь' () {
+//    selectPeriod() <- 4;
+//}
+
+isDayOff(DATE d) = IF extractDOWNumber(d)==0 OR extractDOWNumber(d)==6 OR
+    (extractDay(d)==1 AND extractMonthNumber(d)==1) OR (extractDay(d)==2 AND extractMonthNumber(d)==1) OR (extractDay(d)==7 AND extractMonthNumber(d)==1) OR
+    (extractDay(d)==8 AND extractMonthNumber(d)==3) OR (extractDay(d)==1 AND extractMonthNumber(d)==5) OR (extractDay(d)==9 AND extractMonthNumber(d)==5) OR
+    (extractDay(d)==3 AND extractMonthNumber(d)==7) OR (extractDay(d)==7 AND extractMonthNumber(d)==11) OR (extractDay(d)==25 AND extractMonthNumber(d)==12)
+    THEN TRUE ;
+
+backgroundValue (Employee e, DATE d) = CASE WHEN isDayOff(d) THEN RGB (253, 229, 204)
+    WHEN currentUser()==e THEN RGB (244, 164, 96);
+backgroundValue (Employee e) = IF currentUser()==e THEN RGB (244, 164, 96);
+
+FORM scheduleVacation 'График отпусков'
+
+    OBJECTS year = INTEGER PANEL
+    PROPERTIES READONLY val = VALUE (year)
+    
+    PROPERTIES() PANEL  isPeriod1, isPeriod2//, isPeriod3, isPeriod4
+    
+    OBJECTS e = Employee
+    PROPERTIES(e) READONLY BACKGROUND backgroundValue(e) shortName STICKY
+    PROPERTIES READONLYIF NOT currentUser()==e BACKGROUND backgroundValue(e) countIsVacationPrev(e,year) STICKY HEADER 'Остаток на 01.01'
+    PROPERTIES READONLY daysIsVacation(e,year) PANEL
+    PROPERTIES READONLY BACKGROUND backgroundValue(e) countIsVacation(e,year) STICKY HEADER 'Всего дней отпуска за год' 
+    FILTERGROUP active FILTER 'Активные и неуволенные' active(e) AND NOT dateDismissal(e) DEFAULT
+    ORDERS shortName(e)
+    
+    OBJECTS dt = DATE PAGESIZE 0
+    PROPERTIES(e,dt) READONLYIF NOT currentUser()==e BACKGROUND backgroundValue(e,dt) isVacation COLUMNS 'dt' (dt) HEADER (toChar(dt,'DD.')+'\n'+toChar(dt,'MM'))
+    FILTERS iterate(dt,beginDatePeriod(year), endDatePeriod(year))
+    
+    EVENTS ON INIT {
+        SEEK scheduleVacation.year = extractYear(currentDate());
+        selectPeriod() <- 1;
+    }
+;
+
+NAVIGATOR {
+    dashboard {
+        NEW scheduleVacation;
+    }
+}
+
+minusSelectYear '-' (INTEGER y) {
+    IF y > 2020 THEN SEEK scheduleVacation.year = y - 1;
+}
+
+plusSelectYear '+' (INTEGER y) {
+    IF y < 2050 THEN SEEK scheduleVacation.year = y + 1;
+}
+
+EXTEND FORM scheduleVacation
+    PROPERTIES(year) minusSelectYear, plusSelectYear
+;
+
+FORM setIntervalDates 'Ввод интервала дат'
+    OBJECTS interval = (d1 = DATE, d2 = DATE) PANEL
+    PROPERTIES d1 'Дата c:  ' = VALUE (d1)
+    PROPERTIES d2 'по: ' = VALUE (d2)
+    EVENTS ON INIT {
+        SEEK setIntervalDates.d1 = currentDate();
+        SEEK setIntervalDates.d2 = lastDayOfMonth(currentDate());
+    }
+;
+
+DESIGN setIntervalDates { BOX(interval) {caption=NULL;height=30;} }
+
+setIntervalDates 'Заполнить по интервалу дат' () {
+    DIALOG setIntervalDates OBJECTS d1 INPUT, d2 INPUT DO {
+        IF d2 < d1 THEN {
+            MESSAGE 'Неверно введен интервал дат';
+            RETURN ;
+        }
+        IF daysBetweenDates(d2,d1) > 60 THEN {
+            MESSAGE 'Интервал дат более 60 дней вводить запрещено';
+            RETURN ;
+        }
+        FOR iterate(DATE d, d1,d2) AND NOT isDayOff(d) DO {
+            isVacation(currentUser(),d) <- TRUE ;
+        }
+    }
+}
+
+EXTEND FORM scheduleVacation
+    PROPERTIES() TOOLBAR setIntervalDates
+;
+
+DESIGN scheduleVacation {
+    NEW top FIRST {
+        horizontal = TRUE ;
+        align = STRETCH ;
+        NEW top1 {
+            horizontal = TRUE ;
+            caption = 'Год ';
+            MOVE PROPERTY (minusSelectYear(year)) {font = '20';}
+            MOVE PROPERTY (val) {caption = ''; font = '20'; charWidth = 6;}
+            MOVE PROPERTY (plusSelectYear(year)) {font = '20';}
+        }
+        NEW top2 {
+            horizontal = TRUE ;
+            caption = 'Период ';
+            MOVE PROPERTY (isPeriod1()) {font = '20';}
+            MOVE PROPERTY (isPeriod2()) {font = '20';}
+        }
+        NEW top3 {
+            horizontal = TRUE ;
+            caption = 'Дни отпуска ';
+            fill = 1;
+            align = STRETCH ;
+            MOVE PROPERTY (daysIsVacation(e,year)) {align = STRETCH ;charHeight=2;}
+        }
+    }
+}

@@ -1,3 +1,4 @@
 MODULE Igor;
 
-REQUIRE Salary, MoneyAccounting, EmployeeDop, CopyTables, PaymentDop, ExpenseDop, PaymentProcessDashboardDop, EmployeeExpenseDop;
+REQUIRE Salary, MoneyAccounting, EmployeeDop, CopyTables, PaymentDop, ExpenseDop, PaymentProcessDashboardDop, EmployeeExpenseDop,
+        ScheduleVacation;
