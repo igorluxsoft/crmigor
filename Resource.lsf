@@ -171,7 +171,7 @@ DESIGN reservation {
     }
 }
 
-editReservation 'Резервирование ресурса' (Resource r) {
+editReservation 'Зарезервировать ресурс' (Resource r) {
     NEWSESSION {
         SHOW reservation OBJECTS r=r;
     }
@@ -179,7 +179,10 @@ editReservation 'Резервирование ресурса' (Resource r) {
 
 FORM resources 'Резервирование ресурсов'
     OBJECTS r = Resource  
-    PROPERTIES(r) READONLY inUse, name, nameResponsiblePerson, note, nameCreatedUser, createdDateTime
+    PROPERTIES(r) READONLY inUse, name, nameResponsiblePerson 
+    PROPERTIES READONLY =STRING(note(r)) HEADER 'Примечание'
+    PROPERTIES(r) READONLY nameCreatedUser, createdDateTime
+    PROPERTIES(r) editReservation TOOLBAR 
     PROPERTIES(r) NEWSESSION NEW, EDIT, DELETE
     FILTERGROUP inUse
         FILTER 'Используемые' inUse(r) DEFAULT    
@@ -187,7 +190,6 @@ FORM resources 'Резервирование ресурсов'
     
     OBJECTS d = Reservation
     PROPERTIES(d) READONLY dateFrom, timeFrom, dateTo, timeTo, nameUser, nameEvent, nameTypeEvent, nameCustomerEvent, comments, nameCreatedUser, createdDateTime
-    PROPERTIES(r) editReservation TOOLBAR DRAW d
     ORDERS dateFrom(d), timeFrom(d) 
     FILTERS resource(d) == r    
     FILTERGROUP actual
@@ -198,7 +200,7 @@ FORM resources 'Резервирование ресурсов'
 CLASS ResourceLog 'Запись лога ресурсов';
 TABLE ResourceLog(ResourceLog);
 
-resource 'Ресурс' = DATA Resource (ResourceLog) INDEXED NONULL DELETE ;
+resource 'Ресурс' = DATA Resource (ResourceLog) INDEXED ;
 
 hostnameComputer 'Имя компьютера' = DATA ISTRING[100] (ResourceLog); 
 userLogin 'Логин пользователя' = DATA STRING[100] (ResourceLog); 
@@ -228,7 +230,7 @@ WHEN SET(Resource r IS Resource) DO {
         userLogin(d) <- userLoginConnection(currentSession()); 
         nameContact(d) <- STRING[100](nameContact(currentSession()));
         dateTimeSession(d) <- dateTime(currentSession());             
-        note(d) <- STRING[255]('Добавлен ресурс');              
+        note(d) <- STRING[255]('Добавлен ресурс '+name(r));              
     }
 }
 
@@ -239,7 +241,7 @@ WHEN DROPPED(Resource p IS Resource) DO {
         userLogin(d) <- userLoginConnection(currentSession()); 
         nameContact(d) <- STRING[100](nameContact(currentSession()));
         dateTimeSession(d) <- dateTime(currentSession());        
-        note(d) <- STRING[255]('Удален ресурс '+name(p));         
+        note(d) <- STRING[255]('Удален ресурс '+PREV(name(p)));         
     }
 }
 
@@ -282,7 +284,7 @@ WHEN CHANGED(inUse(Resource m)) AND NOT DROPPED(m IS Resource) AND NOT SET(m IS 
 CLASS ReservationLog 'Запись лога резервирования';
 TABLE ReservationLog(ReservationLog);
 
-resource = DATA Resource (ReservationLog) INDEXED NONULL DELETE;
+resource = DATA Resource (ReservationLog) INDEXED ;
 
 prevNameUser 'Кто резервирует (пред.)' = DATA ISTRING[100] (ReservationLog);
 nameUser 'Кто резервирует' = DATA ISTRING[100] (ReservationLog);
@@ -347,17 +349,16 @@ WHEN (CHANGED(user(Reservation d)) OR CHANGED(dateFrom(d)) OR CHANGED(dateTo(d))
         note(l) <- 'Изменение';
     }
    
-WHEN DROPPED(Reservation d IS Reservation) DO  
+WHEN DROPPED(Reservation d IS Reservation) AND PREV(resource(d)) IS Resource DO  
     NEW l = ReservationLog {
-        resource(l) <- resource(d);
-        nameUser(l) <- nameUser(d);
-        nameEvent(l) <- nameEvent(d);
-        nameTypeEvent(l) <- nameTypeEvent(d);
-        nameCustomerEvent(l) <- nameCustomerEvent(d);
-        dateFrom(l) <- dateFrom(d);
-        timeFrom(l) <- timeFrom(d);
-        dateTo(l) <- dateTo(d);
-        timeTo(l) <- timeTo(d);
+        nameUser(l) <- PREV(nameUser(d));
+        nameEvent(l) <- PREV(nameEvent(d));
+        nameTypeEvent(l) <- PREV(nameTypeEvent(d));
+        nameCustomerEvent(l) <- PREV(nameCustomerEvent(d));
+        dateFrom(l) <- PREV(dateFrom(d));
+        timeFrom(l) <- PREV(timeFrom(d));
+        dateTo(l) <- PREV(dateTo(d));
+        timeTo(l) <- PREV(timeTo(d));
         
         nameUserSession(l) <- ISTRING[100](name(currentUser()));
         dateTimeSession(l) <- currentDateTime();
@@ -377,6 +378,11 @@ EXTEND FORM resources
         nameUserSession, dateSession, timeSession, note, nameEvent, nameTypeEvent, nameCustomerEvent
     ORDERS dateSession(ddLog), timeSession(ddLog)
     FILTERS resource(ddLog) == r
+
+    OBJECTS dLogDel=ResourceLog GRID LAST
+    PROPERTIES(dLogDel) READONLY hostnameComputer, userLogin, nameContact, dateSession, timeSession, nameTypeChange, note
+    ORDERS dateSession(dLogDel), timeSession(dLogDel)
+    FILTERS NOT resource(dLogDel) 
 ;
 
 DESIGN resources {
@@ -386,7 +392,7 @@ DESIGN resources {
             fill = 1;
             MOVE BOX(r);
             NEW tabContainer{
-                fill = 1;
+                fill = 5;
                 //type = TABBED;
                 tabbed = TRUE ;
                 MOVE BOX(d);
@@ -409,6 +415,10 @@ DESIGN resources {
                              caption = 'По резервированию';
                              MOVE BOX(ddLog);
                          }
+                        NEW deleteLog{
+                            caption = 'Удаленные ресурсы';
+                            MOVE BOX(dLogDel);
+                        }
                     } 
                 }               
             }                                
