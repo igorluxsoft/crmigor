@@ -300,9 +300,10 @@ importDataPayment 'Импорт платежи' (DATE dv) {
                                       WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
                                       WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
                                       WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS')
-                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN FIT')
-                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN FIT')
-                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FIT');
+                                      WHEN isCompanyFit() AND id(company(p))='1' AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN FIT')
+                                      WHEN isCompanyFit() AND id(company(p))='1' AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN FIT')
+                                      WHEN isCompanyFit() AND id(company(p))='1' AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FIT')
+                                      WHEN isCompanyFit() AND id(company(p))='2' AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FITS');
         
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
@@ -328,9 +329,10 @@ importDataExpense 'Импорт расходы' (DATE dv) {
                                       WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
                                       WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
                                       WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS')
-                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN FIT')
-                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN FIT')
-                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FIT');
+                                      WHEN isCompanyFit() AND id(company(p))='1' AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN FIT')
+                                      WHEN isCompanyFit() AND id(company(p))='1' AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN FIT')
+                                      WHEN isCompanyFit() AND id(company(p))='1' AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FIT')
+                                      WHEN isCompanyFit() AND id(company(p))='2' AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FITS');
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
         analytics(m) <- analytics(p);
