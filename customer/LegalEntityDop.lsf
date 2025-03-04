@@ -1,0 +1,8 @@
+MODULE LegalEntityDop;
+
+REQUIRE LegalEntity;
+
+NAMESPACE LegalEntity;
+
+isCompanyFit = GROUP SUM 1 IF isCompany(LegalEntity l) AND isSubstring(upper(name(l)),'ФИТ');
+isCompanyLuxSoft = GROUP SUM 1 IF isCompany(LegalEntity l) AND isSubstring(upper(name(l)),'ЛЮКССОФТ');

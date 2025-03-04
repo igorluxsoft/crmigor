@@ -1,6 +1,6 @@
 MODULE ExpenseDop;
 
-REQUIRE Expense, MoveMoneyOprerationDop;
+REQUIRE Expense, MoveMoneyOprerationDop, LegalEntityDop;
 
 NAMESPACE Expense;
 
@@ -40,4 +40,16 @@ EXTEND FORM expenseTypes
 
 EXTEND FORM expenseType
     PROPERTIES(o) inactive
+;
+
+EXTEND FORM expense
+    EVENTS ON INIT {
+        IF NOT date(o) AND NOT currency(o) THEN {
+            date(o) <- currentDate();
+            IF isCompanyLuxSoft() THEN
+                currency(o) <- GROUP MAX Currency c IF shortName(c) = 'BYN';
+            IF isCompanyFit() THEN
+                currency(o) <- GROUP MAX Currency c IF shortName(c) = 'RUB';
+        }    
+    }
 ;

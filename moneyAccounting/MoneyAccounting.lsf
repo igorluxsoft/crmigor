@@ -296,10 +296,14 @@ importDataPayment 'Импорт платежи' (DATE dv) {
         date(m) <- date(p);
         operation(m) <- operation(p);
         summa(m) <- NUMERIC[14,2](sum(p));
-        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
-                                      WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
-                                      WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
-                                      WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS');
+        registerAccounting(m) <- CASE WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
+                                      WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
+                                      WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
+                                      WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS')
+                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN FIT')
+                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN FIT')
+                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FIT');
+        
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
         analytics(m) <- analytics(p);
@@ -320,10 +324,13 @@ importDataExpense 'Импорт расходы' (DATE dv) {
         date(m) <- date(p);
         operation(m) <- operation(p);
         summa(m) <- -(NUMERIC[14,2](sum(p)));
-        registerAccounting(m) <- CASE WHEN shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
-                                      WHEN shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
-                                      WHEN shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
-                                      WHEN shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS');
+        registerAccounting(m) <- CASE WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'BYN' THEN registerAccounting('BYN/BN  LS')
+                                      WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN  LS')
+                                      WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN  LS')
+                                      WHEN isCompanyLuxSoft() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN  LS')
+                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'USD' THEN registerAccounting('USD/BN FIT')
+                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'EUR' THEN registerAccounting('EUR/BN FIT')
+                                      WHEN isCompanyFit() AND shortNameCurrency(p) = 'RUB' THEN registerAccounting('RUR/BN FIT');
         customer(m) <- customer(p);
         legalEntity(m) <- legalEntity(p);
         analytics(m) <- analytics(p);
@@ -720,6 +727,21 @@ NAVIGATOR {
         }
     }
 }
+
+
+EXTEND FORM editMoneyMove
+    EVENTS ON INIT {
+        IF NOT date(m) AND NOT registerAccounting(m) THEN {
+            date(m) <- currentDate();
+            IF isCompanyLuxSoft() THEN
+                registerAccounting(m) <- registerAccounting('BYN/NAL LS');
+            IF isCompanyFit() THEN
+                registerAccounting(m) <- registerAccounting('RUR/NAL FIT');
+        }
+    }
+;
+
+
 
 //// Первоначальный импорт из журнала "Движение финансов"
 //initialImport 'Первоначальный импорт' {
