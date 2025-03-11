@@ -1,0 +1,13 @@
+MODULE EventDashboardDop;
+
+REQUIRE EventDashboard;
+
+DESIGN eventDashboard {
+    BOX(o) {
+        fill = 1;
+    }
+    bottom {
+        fill = 5;
+    }
+} 
+
