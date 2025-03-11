@@ -1,0 +1,264 @@
+MODULE Liability;
+
+REQUIRE Project, EmployeeDop;
+
+NAMESPACE Liability;
+
+CLASS Liability 'Ответственность';
+number 'Порядок сорт.' = DATA INTEGER (Liability) ;
+name 'Наименование' = DATA STRING[150] (Liability) ;
+
+liability = GROUP AGGR Liability l BY number(l);
+
+FORM listLiability 'Ответственности'
+    OBJECTS l = Liability
+    PROPERTIES(l) READONLY number, name
+    PROPERTIES (l) NEWSESSION NEW, EDIT, DELETE
+
+    LIST Liability OBJECT l
+;
+
+FORM editLiability 'Ответственность'
+    OBJECTS l = Liability PANEL
+    PROPERTIES(l) number, name
+    EDIT Liability OBJECT l
+;
+
+NAVIGATOR {
+    employeeFolder {
+        NEW listLiability;
+    }
+}
+
+CLASS ProjectLiability 'Ответственность по проектам';
+project = DATA Project (ProjectLiability) NONULL DELETE AUTOSET;
+employee = DATA Employee (ProjectLiability) NONULL DELETE AUTOSET;
+liability = DATA Liability (ProjectLiability) NONULL;
+note 'Примечание' = DATA STRING (ProjectLiability) CHARWIDTH 35;
+
+shortNameEmployee 'Сотрудник' (ProjectLiability p) = shortName(employee(p));
+namePosition 'Должность' (ProjectLiability p) = namePosition(employee(p));
+nameLiability 'Ответственность' (ProjectLiability p) = name(liability(p)) CHARWIDTH 25;
+numberLiability 'Порядок сорт.' (ProjectLiability p) = number(liability(p));
+nameProject 'Проект' (ProjectLiability p) = name(project(p));
+
+reportingMonth = GROUP AGGR ProjectLiability pl BY project(pl), employee(pl), liability(pl);
+
+EXTEND FORM projects
+    OBJECTS p = ProjectLiability
+    PROPERTIES(p) READONLY nameLiability, shortNameEmployee, namePosition, note
+    PROPERTIES(p) SHOWIF 5=7 numberLiability
+    ORDERS numberLiability(p)
+    FILTERS project(p)=o
+;
+
+DESIGN projects {
+    BOX(o) { fill=4;}
+    BOX(p) { fill=1;}
+}
+
+FORM projectLiability 'Ответственность'
+    OBJECTS p = ProjectLiability PANEL
+    PROPERTIES(p) READONLY nameProject
+    PROPERTIES(p) nameLiability, shortNameEmployee, note
+    EDIT ProjectLiability OBJECT p
+;
+
+EXTEND FORM project
+    OBJECTS p = ProjectLiability
+    PROPERTIES(p) nameLiability, shortNameEmployee, namePosition, note
+    PROPERTIES(p) SHOWIF 5=7 numberLiability
+    PROPERTIES(p) NEW, DELETE 
+    ORDERS numberLiability(p), shortNameEmployee(p)
+    FILTERS project(p)=o
+;
+
+EXTEND FORM employee
+    OBJECTS pl = ProjectLiability
+    PROPERTIES(pl) nameProject, nameLiability, note
+    PROPERTIES(pl) SHOWIF 5=7 numberLiability
+    PROPERTIES(pl) NEW, DELETE 
+    ORDERS numberLiability(pl), nameProject(pl)
+    FILTERS employee(pl)=o
+;
+
+DESIGN employee {
+    OBJECTS {
+        NEW doptel {
+            horizontal = TRUE ;
+            fill = 1;
+            MOVE BOX(p) {fill = 1;}
+            MOVE BOX(pl) {fill = 1;}
+        }
+    }    
+    MOVE TOOLBARBOX ;
+}
+
+
+///// Первоначальный импорт ответственностей
+importLiability 'Первоначальный импорт ответственностей'(){
+    NEWSESSION {
+        DELETE Liability l WHERE l IS Liability; 
+        NEW l = Liability { number(l)<-1; name(l)<-'Менеджер проекта';}
+        NEW l = Liability { number(l)<-11; name(l)<-'Технический руководитель проекта';}
+        NEW l = Liability { number(l)<-21; name(l)<-'Основной сотрудник';}
+        NEW l = Liability { number(l)<-31; name(l)<-'1-ый уровень замены';}
+        NEW l = Liability { number(l)<-32; name(l)<-'2-ой уровень замены';}
+        NEW l = Liability { number(l)<-51; name(l)<-'Дополнительный сотрудник L1';}
+        APPLY;
+    }
+}
+EXTEND FORM listLiability
+    PROPERTIES TOOLBAR importLiability()
+;
+
+///// Первоначальный импорт ответственностей  по проекту
+importLiabilityProject 'Первоначальный импорт ответственностей по проекту'(){
+    NEWSESSION {
+
+        DELETE ProjectLiability pl WHERE pl IS ProjectLiability;
+        
+        LOCAL idProject = STRING[150](INTEGER);
+        LOCAL columnD = STRING[150](INTEGER);
+        LOCAL columnE = STRING[150](INTEGER);
+        LOCAL columnF = STRING[150](INTEGER);
+        LOCAL columnG = STRING[150](INTEGER);
+        LOCAL columnH = STRING[150](INTEGER);
+        LOCAL columnI = STRING[150](INTEGER);
+        LOCAL columnJ = STRING[150](INTEGER);
+        
+        LOCAL cstr = STRING();
+        cstr() <- '';
+        
+        LOCAL lProject = Project();
+        LOCAL lEmployee = Employee();
+        
+        INPUT f = EXCELFILE DO {
+            IMPORT XLS NOHEADER FROM f TO idProject = B, columnD = D, columnE = E, columnF = F, columnG = G, columnH = H, columnI = I, columnJ = J ;
+            
+            FOR length(trim(idProject(INTEGER i))) > 0 AND i > 0 ORDER i DO {
+                lProject() <- (GROUP MAX Project pp IF trim(id(pp))==trim(idProject(i)));
+                
+                IF lProject() THEN {
+                    
+                    // Менеджер проекта
+                    IF length(trim(columnD(i))) > 0 THEN {
+                        lEmployee() <- (GROUP MAX Employee e IF shortName(e) = columnD(i));
+
+                        IF columnD(i) = 'Добровольский Д.Д.' THEN lEmployee() <- employee('093');
+
+                        IF lEmployee() THEN {
+                            NEW pl = ProjectLiability {
+                                project(pl) <- lProject();
+                                employee(pl) <- lEmployee();
+                                liability(pl) <- liability(1);
+                            }
+                        }
+                        ELSE cstr() <- cstr() + 'Сотрудник: ' + columnD(i) + ', столбец D, стр. ' + i + '\n';
+                    }
+                    
+                    // Технический руководитель проекта
+                    IF length(trim(columnE(i))) > 0 THEN {
+                        lEmployee() <- (GROUP MAX Employee e IF shortName(e) = columnE(i));
+
+                        IF lEmployee() THEN {
+                            NEW pl = ProjectLiability {
+                                project(pl) <- lProject();
+                                employee(pl) <- lEmployee();
+                                liability(pl) <- liability(11);
+                            }
+                        }
+                        ELSE cstr() <- cstr() + 'Сотрудник: ' + columnE(i) + ', столбец E, стр. ' + i + '\n';
+                    }
+
+                    // Основной сотрудник
+                    IF length(trim(columnF(i))) > 0 THEN {
+                        lEmployee() <- (GROUP MAX Employee e IF shortName(e) = columnF(i));
+
+                        IF lEmployee() THEN {
+                            NEW pl = ProjectLiability {
+                                project(pl) <- lProject();
+                                employee(pl) <- lEmployee();
+                                liability(pl) <- liability(21);
+                            }
+                        }
+                        ELSE cstr() <- cstr() + 'Сотрудник: ' + columnF(i) + ', столбец F, стр. ' + i + '\n';
+                    }
+
+                    // 1 уровень замены
+                    IF length(trim(columnG(i))) > 0 THEN {
+                        lEmployee() <- (GROUP MAX Employee e IF shortName(e) = columnG(i));
+
+                        IF lEmployee() THEN {
+                            NEW pl = ProjectLiability {
+                                project(pl) <- lProject();
+                                employee(pl) <- lEmployee();
+                                liability(pl) <- liability(31);
+                            }
+                        }
+                        ELSE cstr() <- cstr() + 'Сотрудник: ' + columnG(i) + ', столбец G, стр. ' + i + '\n';
+                    }
+
+                    // 2 уровень замены
+                    IF length(trim(columnH(i))) > 0 THEN {
+                        lEmployee() <- (GROUP MAX Employee e IF shortName(e) = columnH(i));
+
+                        IF lEmployee() THEN {
+                            NEW pl = ProjectLiability {
+                                project(pl) <- lProject();
+                                employee(pl) <- lEmployee();
+                                liability(pl) <- liability(32);
+                            }
+                        }
+                        ELSE cstr() <- cstr() + 'Сотрудник: ' + columnH(i) + ', столбец H, стр. ' + i + '\n';
+                    }
+
+                    // Дополнительный сотрудник L1
+                    IF length(trim(columnI(i))) > 0 THEN {
+                        lEmployee() <- (GROUP MAX Employee e IF shortName(e) = getWord(TEXT (columnI(i)),' - ',2));
+
+                        IF lEmployee() THEN {
+                            NEW pl = ProjectLiability {
+                                project(pl) <- lProject();
+                                employee(pl) <- lEmployee();
+                                liability(pl) <- liability(51);
+                                note(pl) <- getWord(TEXT (columnI(i)),' - ',1);
+                            }
+                        }
+                        ELSE cstr() <- cstr() + 'Сотрудник: ' + columnI(i) + ', столбец I, стр. ' + i + '\n';
+                    }
+                    
+                    IF length(trim(columnJ(i))) > 0 THEN {
+                        lEmployee() <- (GROUP MAX Employee e IF shortName(e) = getWord(TEXT (columnJ(i)),' - ',2));
+
+                        IF lEmployee() THEN {
+                            NEW pl = ProjectLiability {
+                                project(pl) <- lProject();
+                                employee(pl) <- lEmployee();
+                                liability(pl) <- liability(51);
+                                note(pl) <- getWord(TEXT (columnJ(i)),' - ',1);
+                            }
+                        }
+                        ELSE cstr() <- cstr() + 'Сотрудник: ' + columnJ(i) + ', столбец J, стр. ' + i + '\n';
+                    }
+                    
+                }
+                ELSE cstr() <- cstr() + 'Проект: ' + idProject(i) + ', стр.' +i+ '\n';
+            }
+        }
+        
+        IF length(cstr()) > 2 THEN 
+            MESSAGE 'ОШИБКИ : \n\n' + cstr();
+        
+        ASK 'Подтвердите прием информации нажатием кнопки "Да"' yes2 = YESNO DO {
+            
+            IF yes2 THEN {
+                APPLY;
+            }
+        }    
+    }
+}
+
+EXTEND FORM projects
+    PROPERTIES importLiabilityProject() DRAW p TOOLBAR 
+;
