@@ -968,7 +968,7 @@ fillReportForComparisonSumCashRuble 'Сформировать' (DATE df, DATE dt
     
     sumTr(DATE d, Employee e) <- GROUP SUM sum(Transfer t) IF date(t)>=df AND date(t)<=dt AND date(t)=d AND employee(t)=e AND 
                                     trim(codeOperation(t)) == 'ЗП' AND trim(codeRegisterAccounting(t)) == 'BYN/NAL LS';
-    sumMm(DATE d, Employee e) <- GROUP SUM abs(summa(MoneyMove m)) IF date(m)>=df AND date(m)<=dt AND date(m)=d AND employee(m)=e AND
+    sumMm(DATE d, Employee e) <- GROUP SUM -(summa(MoneyMove m)) IF date(m)>=df AND date(m)<=dt AND date(m)=d AND employee(m)=e AND
         trim(codeOperation(m)) == 'ЗП' AND trim(codeRegisterAccounting(m)) == 'BYN/NAL LS';
     
     countDiffSum() <- GROUP SUM 1 IF sumTr(DATE d, Employee e) (-) sumMm(d,e) ;

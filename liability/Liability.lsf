@@ -73,6 +73,19 @@ EXTEND FORM project
     FILTERS project(p)=o
 ;
 
+EXTEND FORM employees
+    OBJECTS pl = ProjectLiability
+    PROPERTIES(pl) nameProject, nameLiability, note
+    PROPERTIES(pl) SHOWIF 5=7 numberLiability
+    ORDERS numberLiability(pl), nameProject(pl)
+    FILTERS employee(pl)=o
+;
+
+DESIGN employees {
+    BOX(o) { fill=4;}
+    BOX(pl) { fill=1;}
+}
+
 EXTEND FORM employee
     OBJECTS pl = ProjectLiability
     PROPERTIES(pl) nameProject, nameLiability, note
