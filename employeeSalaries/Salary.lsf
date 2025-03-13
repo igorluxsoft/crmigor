@@ -889,9 +889,10 @@ EXTEND FORM salaries
 ;
 
 ///// Сверка сумм в журналах "Выплаты" и "Расходы" по безналичным рублям
-sumTransfer 'Сумма в журнале "Выплаты": ' = DATA LOCAL NESTED NUMERIC[14,2];
-sumExpenses 'Сумма в журнале "Расходы": ' = DATA LOCAL NESTED NUMERIC[14,2];
-sumDelta 'Разница: ' = DATA LOCAL NESTED NUMERIC[14,2];
+sumTransfer 'Сумма в журнале "Выплаты": ' = DATA LOCAL NESTED NUMERIC[14,2] ();
+sumExpenses 'Сумма в журнале "Расходы": ' = DATA LOCAL NESTED NUMERIC[14,2] ();
+sumDelta 'Разница: ' = DATA LOCAL NESTED NUMERIC[14,2] ();
+isShowTransfer 'Показать отклонения из Выплат' = DATA LOCAL NESTED BOOLEAN (Transfer);
 
 fillReportForComparisonSumExpenses 'Сверить' (DATE df, DATE dt) {
     sumTransfer() <- NULL ;
@@ -901,14 +902,20 @@ fillReportForComparisonSumExpenses 'Сверить' (DATE df, DATE dt) {
     sumTransfer() <- GROUP SUM sum(Transfer t) IF date(t)>=df AND date(t)<=dt AND codeOperation(t)='ЗП' AND codeRegisterAccounting(t)='BYN/BN  LS';
     sumExpenses() <- GROUP SUM sum(Expense e)  IF date(e)>=df AND date(e)<=dt AND nameType(e)='ЗП';
     sumDelta() <- OVERRIDE sumTransfer() (-) sumExpenses(), 0.00;
-    
+    IF NOT (sumDelta() = 0.00) THEN 
+        isShowTransfer(Transfer t) <- TRUE IF date(t)>=df AND date(t)<=dt AND codeOperation(t)='ЗП' AND codeRegisterAccounting(t)='BYN/BN  LS' AND note(t)='ОТКЛОНЕНИЕ';
+    ELSE isShowTransfer(Transfer t) <- NULL;
 }
 
 FORM reportForComparisonSumExpenses 'Сверка сумм в журналах "Выплаты" и "Расходы"'
     OBJECTS df = DATE PANEL, dt = DATE PANEL
     PROPERTIES df 'Дата с' = VALUE(df), dt 'Дата по' = VALUE(dt) 
     PROPERTIES READONLY sumTransfer(), sumExpenses(), sumDelta()
-
+    
+    OBJECTS t = Transfer
+    PROPERTIES(t) READONLY date, nameEmployee, sum
+    FILTERS isShowTransfer(t)
+    
     PROPERTIES fillReportForComparisonSumExpenses(df, dt)
     
     EVENTS ON INIT {
@@ -936,6 +943,7 @@ DESIGN reportForComparisonSumExpenses {
                 MOVE PROPERTY (sumDelta());
             }
         }
+        MOVE BOX(t) {caption='Отклонения';}
     }
 }
 

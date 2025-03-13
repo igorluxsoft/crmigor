@@ -1,6 +1,6 @@
 MODULE Liability;
 
-REQUIRE Project, EmployeeDop;
+REQUIRE Project, EmployeeDop, CustomerDashboard;
 
 NAMESPACE Liability;
 
@@ -48,7 +48,7 @@ EXTEND FORM projects
     OBJECTS p = ProjectLiability
     PROPERTIES(p) READONLY nameLiability, shortNameEmployee, namePosition, note
     PROPERTIES(p) SHOWIF 5=7 numberLiability
-    ORDERS numberLiability(p)
+    ORDERS numberLiability(p), shortNameEmployee(p)
     FILTERS project(p)=o
 ;
 
@@ -75,7 +75,7 @@ EXTEND FORM project
 
 EXTEND FORM employees
     OBJECTS pl = ProjectLiability
-    PROPERTIES(pl) nameProject, nameLiability, note
+    PROPERTIES(pl) READONLY nameProject, nameLiability, note
     PROPERTIES(pl) SHOWIF 5=7 numberLiability
     ORDERS numberLiability(pl), nameProject(pl)
     FILTERS employee(pl)=o
@@ -107,6 +107,19 @@ DESIGN employee {
     MOVE TOOLBARBOX ;
 }
 
+EXTEND FORM dashboardCustomer
+    OBJECTS pl = ProjectLiability
+    PROPERTIES(pl) READONLY nameProject, shortNameEmployee, nameLiability, note
+    PROPERTIES(pl) SHOWIF 5=7 numberLiability
+    ORDERS numberLiability(pl), shortNameEmployee(pl)
+    FILTERS customer(project(pl))=c
+;
+
+DESIGN dashboardCustomer {
+    tabPane {
+        MOVE BOX(pl) {caption = 'Ответственность';}
+    }
+}
 
 ///// Первоначальный импорт ответственностей
 importLiability 'Первоначальный импорт ответственностей'(){
@@ -121,9 +134,9 @@ importLiability 'Первоначальный импорт ответствен�
         APPLY;
     }
 }
-EXTEND FORM listLiability
-    PROPERTIES TOOLBAR importLiability()
-;
+//EXTEND FORM listLiability
+//    PROPERTIES TOOLBAR importLiability()
+//;
 
 ///// Первоначальный импорт ответственностей  по проекту
 importLiabilityProject 'Первоначальный импорт ответственностей по проекту'(){
@@ -272,6 +285,6 @@ importLiabilityProject 'Первоначальный импорт ответст
     }
 }
 
-EXTEND FORM projects
-    PROPERTIES importLiabilityProject() DRAW p TOOLBAR 
-;
+//EXTEND FORM projects
+//    PROPERTIES importLiabilityProject() DRAW p TOOLBAR 
+//;
