@@ -90,7 +90,7 @@
 		<band height="90">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="0" width="880" height="18" uuid="5bf3e549-dce6-4bd9-8b09-6bcad6cfbf85">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="0" width="1000" height="18" uuid="5bf3e549-dce6-4bd9-8b09-6bcad6cfbf85">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -103,7 +103,7 @@
 				<textElement textAlignment="Left">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{code(r)}+" "+$F{name(r)}+" , корр-ка: "+($F{dateTimeKorr(r)}==null ? "<пусто>" : $F{dateTimeKorr(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", расчет:  "+($F{dateTimeBalance(r)}==null ? "<пусто>" : $F{dateTimeBalance(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", коэф-т:  "+($F{koeff(r)}==null ? "<пусто>" :lsfusion.base.BaseUtils.bigDecimalToString("##0.00",$F{koeff(r)}))]]></textFieldExpression>
+				<textFieldExpression><![CDATA["                                    "+$F{code(r)}+" "+$F{name(r)}+" , корр-ка: "+($F{dateTimeKorr(r)}==null ? "<пусто>" : $F{dateTimeKorr(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", расчет:  "+($F{dateTimeBalance(r)}==null ? "<пусто>" : $F{dateTimeBalance(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", коэф-т:  "+($F{koeff(r)}==null ? "<пусто>" :lsfusion.base.BaseUtils.bigDecimalToString("##0.00",$F{koeff(r)}))]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="18" width="70" height="18" uuid="3dfe9fdb-25ab-405f-b6cb-f3236f8af2a5">
@@ -273,7 +273,7 @@
 				<textFieldExpression><![CDATA[$F{deltaBalanceUSD(mes)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="0" width="880" height="18" uuid="6a52a744-f8a7-4389-873c-32c8c0ab7fd3">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="0" width="1000" height="18" uuid="6a52a744-f8a7-4389-873c-32c8c0ab7fd3">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
@@ -286,7 +286,7 @@
 				<textElement textAlignment="Left">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["Итоги"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["                                    Итоги"]]></textFieldExpression>
 			</textField>
 		</band>
 	</summary>

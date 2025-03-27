@@ -378,6 +378,62 @@ importData 'Импорт из бухгалтерии' () {
     } ELSE MESSAGE 'Выполнение импорта из бухгалтерии отменено';
 }
 
+importAndRecalculate 'Импорт из бух. + перерасчеты' () {
+    messPayment() <- '';
+    messExpense() <- '';
+
+    DIALOG inputParameters OBJECTS dateimp INPUT DO NEWSESSION NESTED LOCAL {
+        LOCAL t = TypeExchange ();
+        LOCAL mess = STRING ();
+
+        DELETE MoneyMove m WHERE m IS MoneyMove AND date(m) >= dateimp AND isNoCash(registerAccounting(m));
+
+        importDataPayment(dateimp);
+        importDataExpense(dateimp);
+
+        /// Перерасчет остатков по всем регистрам учета
+        LOCAL bal = NUMERIC[12,2] ();
+        
+        FOR RegisterAccounting ra IS RegisterAccounting DO {
+            bal() <- balance(ra, sum(dateimp,-1));
+            FOR registerAccounting(MoneyMove m)==ra AND date(m)>=dateimp ORDER date(m), codeOperation(m), m DO {
+                bal() <- bal() (+) summa(m);
+                balance(m) <- bal();
+            }
+            dateTimeBalance(ra) <- currentDateTime();
+        }
+
+        /// Перерасчет сумм USD
+        // тип обмена - бел. рубль
+        LOCAL tBYN = TypeExchange ();
+        tBYN() <- GROUP MAX (TypeExchange t) IF name(t) = 'НБРБ (BYN)';
+        
+        LOCAL s = NUMERIC[18,6] ();
+        
+        FOR RegisterAccounting ra IS RegisterAccounting DO {
+            FOR registerAccounting(MoneyMove m)==ra AND NOT summaUSD(m) DO {
+                IF shortName(currency(ra)) = 'USD' THEN summaUSD(m) <- summa(m);
+                ELSE {
+                    IF shortName(currency(ra)) = 'BYN' THEN s() <- summa(m);
+                    ELSE s() <- round6(summa(m) * rateOn(tBYN(), currency(ra), date(m))); // переводим в BYN
+                    summaUSD(m) <- round2(s() * rateOn(defaultTypeExchange(), currency(tBYN()), date(m)));
+                }
+            }
+            dateTimeSummaUSD(ra) <- currentDateTime();
+        }
+        
+        IF length(messPayment()) > 5 OR length(messExpense()) > 5 THEN {
+            IF length(messPayment()) > 5 THEN messPayment() <- '    ПЛАТЕЖИ :\n' + messPayment();
+            IF length(messExpense()) > 5 THEN messExpense() <- '\n\n    РАСХОДЫ :\n' + messExpense();
+            mess() <- 'Некорректные записи при импорте из бухгалтерии :\n\n' + messPayment() + messExpense();
+            MESSAGE mess();
+        }
+        APPLY ;
+        MESSAGE 'Импорт из бухгалтерии + перерасчеты завершены';
+    } ELSE MESSAGE 'Выполнение импорта из бухгалтерии + перерасчеты отменено';
+}
+
+
 ///// Добавить запись по текущей
 addFromCurrent 'Добавить по тек.'(MoneyMove mmtek)  {
     NEWSESSION {
@@ -490,6 +546,7 @@ FORM viewMoneyMove 'Движение денег'
     PROPERTIES recalculateBalance() TOOLBAR DRAW m
     PROPERTIES recalculateSummaUSD() TOOLBAR DRAW m
     PROPERTIES importData() TOOLBAR DRAW m
+    PROPERTIES importAndRecalculate() TOOLBAR DRAW m
     PROPERTIES(m) deleteInMoneyMove TOOLBAR LAST
     PROPERTIES(m) addFromCurrent BEFORE deleteInMoneyMove(m) TOOLBAR DRAW m
     ORDERS date(m), codeOperation(m)
