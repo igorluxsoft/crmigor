@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.18.1.final using JasperReports Library version 6.12.0  -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="MoneyAccounting.reportPerYear_r" pageWidth="1004" pageHeight="595" orientation="Landscape" columnWidth="1004" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4a296497-0392-45be-935a-0f3d3ececaa8">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="MoneyAccounting.reportPerYear_r" pageWidth="1220" pageHeight="595" orientation="Landscape" columnWidth="1220" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4a296497-0392-45be-935a-0f3d3ececaa8">
 	<property name="net.sf.jasperreports.export.xls.print.page.width" value="842"/>
 	<property name="net.sf.jasperreports.export.xls.print.page.height" value="595"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
 	<style name="DefaultStyle" isDefault="true" vTextAlign="Middle" fontName="lsf.TimesNewRoman" fontSize="10">
 		<box>
 			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -37,10 +46,9 @@
 		<band height="58">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="120" y="28" width="70" height="30" uuid="8b0a2bb7-32ca-41ad-9434-b42e5fb0192b">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="120" y="28" width="90" height="30" uuid="8b0a2bb7-32ca-41ad-9434-b42e5fb0192b">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -49,9 +57,10 @@
 				<textFieldExpression><![CDATA["На начало года"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="190" y="28" width="810" height="30" uuid="e59dc419-75b2-4a92-b518-cb4f17faa43d">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="210" y="28" width="1010" height="30" uuid="e59dc419-75b2-4a92-b518-cb4f17faa43d">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Center">
 					<font size="9"/>
@@ -68,7 +77,7 @@
 				<textElement textAlignment="Left"/>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="0" y="0" width="1000" height="28" uuid="aca17606-60f5-48c1-8ae6-0a1286246019">
+				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="0" y="0" width="1220" height="28" uuid="aca17606-60f5-48c1-8ae6-0a1286246019">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
@@ -90,9 +99,9 @@
 		<band height="90">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="0" width="1000" height="18" uuid="5bf3e549-dce6-4bd9-8b09-6bcad6cfbf85">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="0" width="1220" height="18" uuid="5bf3e549-dce6-4bd9-8b09-6bcad6cfbf85">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -106,16 +115,14 @@
 				<textFieldExpression><![CDATA["                                    "+$F{code(r)}+" "+$F{name(r)}+" , корр-ка: "+($F{dateTimeKorr(r)}==null ? "<пусто>" : $F{dateTimeKorr(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", расчет:  "+($F{dateTimeBalance(r)}==null ? "<пусто>" : $F{dateTimeBalance(r)}.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))+", коэф-т:  "+($F{koeff(r)}==null ? "<пусто>" :lsfusion.base.BaseUtils.bigDecimalToString("##0.00",$F{koeff(r)}))]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="18" width="70" height="18" uuid="3dfe9fdb-25ab-405f-b6cb-f3236f8af2a5">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="18" width="90" height="18" uuid="3dfe9fdb-25ab-405f-b6cb-f3236f8af2a5"/>
 				<textElement textAlignment="Right">
 					<font size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{balanceBeginYear(r)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="54" width="70" height="18" uuid="c0712946-d40f-4043-92a8-99a868d9aeb7">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="54" width="90" height="18" uuid="c0712946-d40f-4043-92a8-99a868d9aeb7">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right">
@@ -124,24 +131,27 @@
 				<textFieldExpression><![CDATA[$F{balanceBeginYearUSD(r)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="190" y="18" width="810" height="18" uuid="1f2b704d-4998-4180-a912-50cbb1572134">
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="210" y="18" width="1010" height="18" uuid="1f2b704d-4998-4180-a912-50cbb1572134"/>
 				<textElement textAlignment="Right">
 					<font size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{balance(r,mes)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="190" y="36" width="810" height="18" uuid="fe964342-a9f1-4129-a674-5c15184597cb"/>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="210" y="36" width="1010" height="18" uuid="fe964342-a9f1-4129-a674-5c15184597cb">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
 				<textElement textAlignment="Right">
 					<font size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{deltaBalance(r,mes)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="190" y="54" width="810" height="18" uuid="4b7191d4-33d9-456d-9d77-1f96f525886f"/>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="210" y="54" width="1010" height="18" uuid="4b7191d4-33d9-456d-9d77-1f96f525886f">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
 				<textElement textAlignment="Right">
 					<font size="9"/>
 				</textElement>
@@ -178,24 +188,23 @@
 				<textFieldExpression><![CDATA["Остаток в USD"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="36" width="70" height="18" uuid="8036aaaa-7b49-4230-9740-78ff0c6c10db">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="36" width="90" height="18" uuid="8036aaaa-7b49-4230-9740-78ff0c6c10db"/>
 				<textElement textAlignment="Right">
 					<font size="9"/>
 				</textElement>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.0####" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="190" y="72" width="810" height="18" uuid="cf57bcbc-5f91-4cd1-9752-bca46237f2fe"/>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="210" y="72" width="1010" height="18" uuid="cf57bcbc-5f91-4cd1-9752-bca46237f2fe">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
 				<textElement textAlignment="Right">
 					<font size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{rateUSD(r,mes)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.0####" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="72" width="70" height="18" uuid="822b1ec3-70aa-4ba4-9c5c-f07d040d2f55">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="72" width="90" height="18" uuid="822b1ec3-70aa-4ba4-9c5c-f07d040d2f55"/>
 				<textElement textAlignment="Right">
 					<font size="9"/>
 				</textElement>
@@ -217,9 +226,8 @@
 		<band height="54">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="120" y="18" width="70" height="18" backcolor="#D3D3D3" uuid="7ca688b0-7534-4794-8a00-62e247dfd6da">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="120" y="18" width="90" height="18" backcolor="#D3D3D3" uuid="7ca688b0-7534-4794-8a00-62e247dfd6da">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right">
 					<font size="9" isBold="true"/>
@@ -227,8 +235,10 @@
 				<textFieldExpression><![CDATA[$F{balanceBeginYearUSD()}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="190" y="18" width="810" height="18" backcolor="#D3D3D3" uuid="5d808ee1-92e6-411f-883c-baa514fbc8bf">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="210" y="18" width="1010" height="18" backcolor="#D3D3D3" uuid="5d808ee1-92e6-411f-883c-baa514fbc8bf">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right">
 					<font size="9" isBold="true"/>
@@ -255,17 +265,18 @@
 				<textFieldExpression><![CDATA["Разница к пред.месяцу"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="120" y="36" width="70" height="18" backcolor="#D3D3D3" uuid="986a34f5-3e67-4dd2-87dd-1c266e2a9e0e">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="120" y="36" width="90" height="18" backcolor="#D3D3D3" uuid="986a34f5-3e67-4dd2-87dd-1c266e2a9e0e">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right">
 					<font size="9" isBold="false"/>
 				</textElement>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="190" y="36" width="810" height="18" backcolor="#D3D3D3" uuid="021028cc-9203-4b42-8c82-791e85f82e53">
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" mode="Opaque" x="210" y="36" width="1010" height="18" backcolor="#D3D3D3" uuid="021028cc-9203-4b42-8c82-791e85f82e53">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right">
 					<font size="9" isBold="false"/>
@@ -273,9 +284,9 @@
 				<textFieldExpression><![CDATA[$F{deltaBalanceUSD(mes)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="0" width="1000" height="18" uuid="6a52a744-f8a7-4389-873c-32c8c0ab7fd3">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="0" y="0" width="1220" height="18" uuid="6a52a744-f8a7-4389-873c-32c8c0ab7fd3">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>

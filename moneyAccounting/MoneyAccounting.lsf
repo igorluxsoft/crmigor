@@ -402,7 +402,7 @@ importAndRecalculate 'Импорт из бух. + перерасчеты' () {
             }
             dateTimeBalance(ra) <- currentDateTime();
         }
-
+        
         /// Перерасчет сумм USD
         // тип обмена - бел. рубль
         LOCAL tBYN = TypeExchange ();
