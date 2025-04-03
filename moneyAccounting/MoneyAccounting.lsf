@@ -804,7 +804,9 @@ EXTEND FORM editMoneyMove
     }
 ;
 
-
+WHEN LOCAL FORMS editMoneyMove SETCHANGED(operation(MoneyMove m)) AND typeAnalytics(analytics(m)) AND NOT (typeAnalytics(analytics(m))==typeAnalytics(operation(m))) DO {
+    analytics(m) <- NULL ;
+}
 
 //// Первоначальный импорт из журнала "Движение финансов"
 //initialImport 'Первоначальный импорт' {
