@@ -24,15 +24,10 @@ FORM editLiability 'Ответственность'
     EDIT Liability OBJECT l
 ;
 
-NAVIGATOR {
-    employeeFolder {
-        NEW listLiability;
-    }
-}
 
 CLASS ProjectLiability 'Ответственность по проектам';
-project = DATA Project (ProjectLiability) NONULL DELETE AUTOSET;
-employee = DATA Employee (ProjectLiability) NONULL DELETE AUTOSET;
+project = DATA Project (ProjectLiability) NONULL AUTOSET;
+employee = DATA Employee (ProjectLiability) NONULL AUTOSET;
 liability = DATA Liability (ProjectLiability) NONULL;
 note 'Примечание' = DATA STRING (ProjectLiability) CHARWIDTH 35;
 
@@ -57,12 +52,24 @@ DESIGN projects {
     BOX(p) { fill=1;}
 }
 
-FORM projectLiability 'Ответственность'
+FORM editProjectLiability 'Ответственность'
     OBJECTS p = ProjectLiability PANEL
-    PROPERTIES(p) READONLY nameProject
+    PROPERTIES(p) nameProject
     PROPERTIES(p) nameLiability, shortNameEmployee, note
     EDIT ProjectLiability OBJECT p
 ;
+
+DESIGN editProjectLiability {
+    OBJECTS {
+        NEW cnt1 {
+            fill = 1;
+            MOVE PROPERTY (nameProject(p));
+            MOVE PROPERTY (nameLiability(p));
+            MOVE PROPERTY (shortNameEmployee(p));
+            MOVE PROPERTY (note(p));
+        }
+    }
+}
 
 EXTEND FORM project
     OBJECTS p = ProjectLiability
@@ -118,6 +125,21 @@ EXTEND FORM dashboardCustomer
 DESIGN dashboardCustomer {
     tabPane {
         MOVE BOX(pl) {caption = 'Ответственность';}
+    }
+}
+
+FORM registerLiability 'Журнал ответственностей'
+    OBJECTS pl = ProjectLiability
+    PROPERTIES(pl) READONLY nameProject, nameLiability, shortNameEmployee, note
+    PROPERTIES(pl) SHOWIF 5=7 numberLiability
+    PROPERTIES (pl) NEWSESSION NEW, EDIT, DELETE
+    ORDERS nameProject(pl), numberLiability(pl)
+;
+
+NAVIGATOR {
+    employeeFolder {
+        NEW listLiability;
+        NEW registerLiability;
     }
 }
 

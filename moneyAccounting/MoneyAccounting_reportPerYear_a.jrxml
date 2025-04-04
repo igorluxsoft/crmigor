@@ -80,7 +80,7 @@
 				<textElement textAlignment="Center" verticalAlignment="Bottom">
 					<font size="12" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["Cчета LuxSoft (на текущую дату)"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Cчета фирмы (на текущую дату)"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" stretchType="RelativeToBandHeight" x="546" y="28" width="336" height="18" uuid="6fee7822-62c7-452f-830e-d2c5ddf17838">
