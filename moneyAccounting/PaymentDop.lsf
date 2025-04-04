@@ -60,3 +60,8 @@ EXTEND FORM payment
         }    
     }
 ;
+
+WHEN LOCAL FORMS payment SETCHANGED(type(Payment p)) OR DROPPED(type(p)) DO {
+    analytics(p) <- NULL ;
+}
+

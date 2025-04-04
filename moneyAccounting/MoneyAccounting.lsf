@@ -804,7 +804,7 @@ EXTEND FORM editMoneyMove
     }
 ;
 
-WHEN LOCAL FORMS editMoneyMove SETCHANGED(operation(MoneyMove m)) AND typeAnalytics(analytics(m)) AND NOT (typeAnalytics(analytics(m))==typeAnalytics(operation(m))) DO {
+WHEN LOCAL FORMS editMoneyMove SETCHANGED(operation(MoneyMove m)) OR DROPPED(operation(m)) DO {
     analytics(m) <- NULL ;
 }
 

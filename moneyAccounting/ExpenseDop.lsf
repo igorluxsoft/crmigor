@@ -53,3 +53,7 @@ EXTEND FORM expense
         }    
     }
 ;
+
+WHEN LOCAL FORMS expense SETCHANGED(type(Expense e)) OR DROPPED(type(e)) DO {
+    analytics(e) <- NULL ;
+}
