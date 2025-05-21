@@ -173,8 +173,8 @@ FORM editReportingMonth 'Отчетный месяц'
 DESIGN editReportingMonth {
     OBJECTS {
         NEW cnt1 {
-            MOVE PROPERTY (nameMonth(r));
-            MOVE PROPERTY (year(r));
+            MOVE PROPERTY (nameMonth(r)) {focusable = FALSE;}
+            MOVE PROPERTY (year(r)) {focusable = FALSE;}
             MOVE PROPERTY (curRate(r));
             MOVE PROPERTY (sumBonus(r));
             MOVE PROPERTY (closed(r));
@@ -311,7 +311,7 @@ FORM listMoveMoneyOprerationSalary 'Справочник операций'
 ;
 
 changeMoveMoneyOprerationSalary(Transfer t) {
-    DIALOG listMoveMoneyOprerationSalary OBJECTS o=operation(t) INPUT DO operation(t)<-o;
+    DIALOG listMoveMoneyOprerationSalary OBJECTS o=operation(t) INPUT DO operation(t) <- o;
 }
 //
 
@@ -450,7 +450,7 @@ FORM salaries 'Начисление зарплаты'
     PROPERTIES(r) READONLY BACKGROUND background(r) nameMonth, year, curRate, sumBonus, closed, note
     PROPERTIES(r) NEWSESSION editReportingMonth TOOLBAR 
     PROPERTIES(r) READONLYIF countSalaryReportingMonth(r) OR closed(r) NEWSESSION DELETE TOOLBAR AFTER editReportingMonth(r)
-    PROPERTIES(r) addAllSalaries TOOLBAR 
+    PROPERTIES(r) READONLYIF countSalaryReportingMonth(r) OR closed(r) addAllSalaries TOOLBAR 
     PROPERTIES(r) READONLYIF closed(r) transferDeviaNextMonth TOOLBAR AFTER addAllSalaries(r)
     
     OBJECTS s = Salary
@@ -567,7 +567,7 @@ deleteInSalary 'Удалить' (Salary sal)  {
         ASK 'Вы действительно хотите удалить отмеченные записи за '+ staticCaption(month(sal)) + ' ' + year(sal) + 'г. '+
             '? \n\n Количество отмеченных записей "Зарплата сотрудника" за отчетный месяц: ' + countInSalary(reportingMonth(year(sal),month(sal))) DO {
             NEWSESSION NESTED LOCAL {
-                DELETE Salary s WHERE s IS Salary AND in(s);
+                DELETE Salary s WHERE s IS Salary AND in(s) AND year(s)=year(sal) AND month(s)=month(sal);
                 APPLY ;
             }    
         }

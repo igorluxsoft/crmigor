@@ -1,0 +1,371 @@
+MODULE Bonus;
+
+REQUIRE Salary, TimeEntryTotalDashboard;
+
+NAMESPACE Bonus;
+
+numberKoeffBonus 'Столбец коэф-та премий (1-10)' = DATA INTEGER (Employee);
+
+EXTEND FORM employee
+    PROPERTIES(o) numberKoeffBonus
+;
+
+DESIGN employee {
+    cntdop {
+        MOVE PROPERTY (numberKoeffBonus(o));
+    }
+}
+
+quarter 'Квартал' (INTEGER nm) = CASE WHEN nm < 4 THEN 1
+    WHEN nm > 3 AND nm < 7  THEN 2
+    WHEN nm > 6 AND nm < 10 THEN 3
+    WHEN nm > 9  THEN 4
+;
+
+quarter 'Квартал' (Salary s) = CASE WHEN numberMonth(s) < 4 THEN 1
+    WHEN numberMonth(s) > 3 AND numberMonth(s) < 7  THEN 2
+    WHEN numberMonth(s) > 6 AND numberMonth(s) < 10 THEN 3
+    WHEN numberMonth(s) > 9  THEN 4
+;
+
+
+CLASS ReportingQuarter 'Отчетный квартал';
+quarter 'Квартал' = DATA INTEGER (ReportingQuarter) NONULL ;
+year 'Год' = DATA INTEGER (ReportingQuarter) NONULL ;
+closed 'Закрыт' = DATA BOOLEAN (ReportingQuarter);
+sumBonus 'Сумма премии, USD' =  DATA NUMERIC[12,2] (ReportingQuarter);
+curRate 'Курс обмена, USD' =  DATA NUMERIC[20,13] (ReportingQuarter);
+note 'Примечание' = DATA STRING (ReportingQuarter);
+
+CONSTRAINT quarter(ReportingQuarter r) > 4 OR quarter(r) < 1 MESSAGE 'Неверное значение поля Квартал';
+
+reportingQuarter = GROUP AGGR ReportingQuarter r BY year(r), quarter(r);
+
+maxYearReportingQuarter = GROUP MAX year(ReportingQuarter r);
+maxQuarterReportingQuarter = GROUP MAX quarter(ReportingQuarter r) IF year(r)=maxYearReportingQuarter() ;
+
+// Первый не закрытый отчетный квартал
+minYearNoClosed = GROUP MIN year(ReportingQuarter r) IF NOT closed(r);
+minQuarterNoClosed = GROUP MIN quarter(ReportingQuarter r) IF NOT closed(r) AND year(r)=minYearNoClosed();
+minReportingQuarterNoClosed = reportingQuarter(minYearNoClosed(),minQuarterNoClosed());
+
+
+CLASS Bonus 'Премия';
+in 'Отм.' = DATA LOCAL BOOLEAN (Bonus);
+
+quarter 'Квартал' = DATA INTEGER (Bonus) NONULL ;
+year 'Год' = DATA INTEGER (Bonus) NONULL ;
+
+employee 'Сотрудник' = DATA Employee (Bonus) NONULL ;
+nameEmployee 'Сотрудник' (Bonus b) = fullName(employee(b)) CHARWIDTH 20;
+
+bonus = GROUP AGGR Bonus b BY year(b), quarter(b), employee(b);
+
+koeff1  'Коэфф-т 1' = DATA INTEGER (Bonus) ;
+koeff2  'Коэфф-т 2' = DATA INTEGER (Bonus) ;
+koeff3  'Коэфф-т 3' = DATA INTEGER (Bonus) ;
+koeff4  'Коэфф-т 4' = DATA INTEGER (Bonus) ;
+koeff5  'Коэфф-т 5' = DATA INTEGER (Bonus) ;
+koeff6  'Коэфф-т 6' = DATA INTEGER (Bonus) ;
+koeff7  'Коэфф-т 7' = DATA INTEGER (Bonus) ;
+koeff8  'Коэфф-т 8' = DATA INTEGER (Bonus) ;
+koeff9  'Коэфф-т 9' = DATA INTEGER (Bonus) ;
+koeff10 'Коэфф-т 10' = DATA INTEGER (Bonus) ;
+
+countKoeff 'Кол-во введенных коэффициентов' (Bonus b) = (IF koeff1(b) THEN 1) (+) (IF koeff2(b) THEN 1) (+) (IF koeff3(b) THEN 1) (+)
+    (IF koeff4(b) THEN 1) (+) (IF koeff5(b) THEN 1) (+) (IF koeff6(b) THEN 1) (+)
+    (IF koeff7(b) THEN 1) (+) (IF koeff8(b) THEN 1) (+) (IF koeff9(b) THEN 1) (+) (IF koeff10(b) THEN 1) ;
+
+koeffItog 'Коэффициент итоговый' (Bonus b) = IF countKoeff(b) > 0 THEN
+    round2((NUMERIC[12,2](koeff1(b) (+) koeff2(b) (+) koeff3(b) (+) koeff4(b) (+) koeff5(b) (+) koeff6(b) (+) koeff7(b) (+) koeff8(b) (+) koeff9(b) (+) koeff10(b))) / countKoeff(b));
+
+koeffAll 'Коэффициент общий' (ReportingQuarter r) = GROUP SUM koeffItog(Bonus b) IF year(b)=year(r) AND quarter(b)=quarter(r);
+
+sumBonusByn 'Сумма премии, BYN' (ReportingQuarter r) = round0(sumBonus(r) * curRate(r));
+priceOnePoint 'Цена одного балла' (ReportingQuarter r) = round2(sumBonus(r) * curRate(r) / koeffAll(r));
+
+sumBonus 'Сумма премии' (Bonus b) = round0(priceOnePoint(reportingQuarter(year(b),quarter(b))) * koeffItog(b));
+
+countBonusReportingQuarter(ReportingQuarter r) = GROUP SUM 1 IF year(Bonus b)=year(r) AND quarter(b)=quarter(r);
+
+sumPay 'Сумма выплат работнику за месяцы года' (Bonus b, Month m) = sumPay(salary(employee(b), year(b), m));
+
+totalHours 'Отмечено часов' (Bonus b) = GROUP SUM totalHours(Employee e,INTEGER y,Month m) IF e=employee(b) AND y=year(b) AND quarter(number(m))=quarter(b);
+
+timeAbsence 'Отсутствие, часы' (Bonus b) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(b) AND extractYear(d)=year(b) AND quarter(extractMonthNumber(d))=quarter(b);
+
+absenceHours 'Кол-во часов' (Bonus b, AbsenceReason r) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(b) AND 
+    reason(a)=r AND extractYear(d)=year(b) AND quarter(extractMonthNumber(d))=quarter(b) CHARWIDTH 5;
+
+/// Исп. для ввода новой записи (корр-ка всех полей)
+FORM reportingQuarter 'Отчетный квартал'
+    OBJECTS r = ReportingQuarter PANEL
+    PROPERTIES(r) quarter, year, curRate, sumBonus, closed, note
+    EVENTS ON INIT {
+        year(r)  <- OVERRIDE maxYearReportingQuarter(), extractYear(currentDate());
+        quarter(r) <- OVERRIDE maxQuarterReportingQuarter(), 1;
+        IF maxYearReportingQuarter() AND maxQuarterReportingQuarter() THEN {
+            IF maxQuarterReportingQuarter() < 4 THEN
+                quarter(r) <- maxQuarterReportingQuarter()+1 ;
+            ELSE {
+                quarter(r) <- 1;
+                year(r) <- year(r) + 1;
+            }
+        }
+        LOCAL t = TypeExchange ();
+        t() <- GROUP MAX (TypeExchange t) IF name(t) = 'НБРБ (BYN)';
+        curRate(r) <- rateOn(t(), currency('USD'), currentDate());
+    }
+;
+
+DESIGN reportingQuarter {
+    OBJECTS {
+        NEW cnt1 {
+            MOVE PROPERTY (quarter(r));
+            MOVE PROPERTY (year(r));
+            MOVE PROPERTY (curRate(r));
+            MOVE PROPERTY (sumBonus(r));
+            MOVE PROPERTY (closed(r));
+            MOVE PROPERTY (note(r));
+        }
+    }
+}
+
+/// Исп. для редактирования записи (корр-ка полей без полей Год и Квартал !!!)
+FORM editReportingQuarter 'Отчетный квартал'
+    OBJECTS r = ReportingQuarter PANEL
+    PROPERTIES(r) READONLY quarter, year
+    PROPERTIES(r) curRate, sumBonus, closed, note
+    EDIT ReportingQuarter OBJECT r
+;
+
+DESIGN editReportingQuarter {
+    OBJECTS {
+        NEW cnt1 {
+            MOVE PROPERTY (quarter(r)) {focusable = FALSE;}
+            MOVE PROPERTY (year(r)) {focusable = FALSE;}
+            MOVE PROPERTY (curRate(r));
+            MOVE PROPERTY (sumBonus(r));
+            MOVE PROPERTY (closed(r));
+            MOVE PROPERTY (note(r));
+        }
+    }
+}
+
+editReportingQuarter 'Редактировать'(ReportingQuarter r) {
+    NEWSESSION {
+        DIALOG  editReportingQuarter OBJECTS r = r NOMANAGESESSION DO {
+            
+        } ELSE {
+            CANCEL;
+        }
+        APPLY;
+    }
+} IMAGE 'edit.png';
+///
+
+addAllEmployee 'Добавить сотрудников' (ReportingQuarter r) {
+    IF countBonusReportingQuarter(r) THEN {
+        MESSAGE 'Сотрудники уже были добавлены.';
+        RETURN ;
+    }
+    IF closed(r) THEN {
+        MESSAGE 'Отчетный месяц закрыт.';
+        RETURN ;
+    }
+    LOCAL maxYear  = INTEGER ();
+    LOCAL maxQuarter = INTEGER ();
+    maxYear()  <- NULL;
+    maxQuarter() <- NULL;
+    maxYear()  <- GROUP MAX year(Bonus b);
+    maxQuarter() <- GROUP MAX quarter(Bonus b) IF year(b)=maxYear() ;
+    
+    FOR Employee e IS Employee AND NOT inactive(e) AND personalAccount(e) AND NOT dateDismissal(e)   NEW b = Bonus DO {
+        quarter(b) <- quarter(r);
+        year(b) <- year(r);
+        employee(b) <- e;
+    }
+    APPLY;
+
+} TOOLBAR ;
+
+background(ReportingQuarter r) = CASE WHEN NOT closed(r) THEN RGB(212,255,212);
+
+bgcolor1() = CASE WHEN numberKoeffBonus(currentUser())=1 THEN RGB(212,255,212);
+bgcolor2() = CASE WHEN numberKoeffBonus(currentUser())=2 THEN RGB(212,255,212);
+bgcolor3() = CASE WHEN numberKoeffBonus(currentUser())=3 THEN RGB(212,255,212);
+bgcolor4() = CASE WHEN numberKoeffBonus(currentUser())=4 THEN RGB(212,255,212);
+bgcolor5() = CASE WHEN numberKoeffBonus(currentUser())=5 THEN RGB(212,255,212);
+bgcolor6() = CASE WHEN numberKoeffBonus(currentUser())=6 THEN RGB(212,255,212);
+bgcolor7() = CASE WHEN numberKoeffBonus(currentUser())=7 THEN RGB(212,255,212);
+bgcolor8() = CASE WHEN numberKoeffBonus(currentUser())=8 THEN RGB(212,255,212);
+bgcolor9() = CASE WHEN numberKoeffBonus(currentUser())=9 THEN RGB(212,255,212);
+bgcolor10() = CASE WHEN numberKoeffBonus(currentUser())=10 THEN RGB(212,255,212);
+
+
+FORM bonuses 'Начисление премии'
+    OBJECTS r = ReportingQuarter
+    PROPERTIES(r) READONLY BACKGROUND background(r) quarter, year, curRate, sumBonus, sumBonusByn, closed, note
+    PROPERTIES(r) READONLY BACKGROUND background(r) koeffAll, priceOnePoint
+    PROPERTIES(r) NEWSESSION editReportingQuarter TOOLBAR
+    PROPERTIES(r) READONLYIF countBonusReportingQuarter(r) OR closed(r) NEWSESSION DELETE TOOLBAR AFTER editReportingQuarter(r)
+    PROPERTIES(r) READONLYIF countBonusReportingQuarter(r) OR closed(r) addAllEmployee TOOLBAR
+    
+    OBJECTS b = Bonus
+    PROPERTIES(b) in
+    PROPERTIES(b) READONLY nameEmployee 
+    PROPERTIES(b) SHOWIF 5=7 quarter, year
+    ORDERS nameEmployee(b)
+    FILTERS year(b)=year(r) AND quarter(b)=quarter(r)
+    
+    OBJECTS m = Month
+    PROPERTIES(m) number SHOWIF 5=7
+    FILTERS quarter(number(m))=quarter(r)
+    
+    PROPERTIES READONLY sumPay(b,m) COLUMNS (m) HEADER staticCaption(m)+', к выплате'
+    ORDERS number(m)
+    PROPERTIES(b) READONLY totalHours, timeAbsence
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor1() koeff1
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor2() koeff2
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor3() koeff3
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor4() koeff4
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor5() koeff5
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor6() koeff6
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor7() koeff7
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor8() koeff8
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor9() koeff9
+    PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor10() koeff10
+    
+    PROPERTIES(b) READONLY koeffItog, sumBonus
+    
+    OBJECTS a = AbsenceReason
+    PROPERTIES(a) name
+    PROPERTIES(b,a) absenceHours
+    ORDERS absenceHours(b,a) DESC 
+    FILTERS absenceHours(b,a)
+;
+
+NAVIGATOR {
+    finance {
+        NEW bonuses AFTER salaries;
+    }
+}
+
+newReportingQuarter 'Добавить отч.квартал'() {
+    NEWSESSION {
+        NEW r = ReportingQuarter {
+            DIALOG reportingQuarter OBJECTS r = r NOMANAGESESSION DO {
+                addAllEmployee(r);
+                SEEK bonuses.r = r;
+            } ELSE {
+                CANCEL;
+            }
+            APPLY;
+        }
+    }
+} IMAGE 'add.png';
+
+EXTEND FORM bonuses
+    PROPERTIES NEWSESSION newReportingQuarter() DRAW r TOOLBAR
+;
+
+DESIGN bonuses {
+    MOVE BOX(r) {
+        fill=1;
+        caption='Отчетный квартал: '+minQuarterNoClosed()+' '+minYearNoClosed()+'г. ';
+    }
+    MOVE BOX(b) {fill=20;}
+    NEW cnt1 {
+        height = 200;
+        width = 470;
+        MOVE BOX(a);
+    }    
+    MOVE TOOLBARBOX;
+    TOOLBAR (r) {
+        MOVE PROPERTY(newReportingQuarter()) FIRST;
+    }
+}
+
+newBonus 'Добавить' (ReportingQuarter r) {
+    NEWSESSION {
+        NEW b = Bonus {
+            DIALOG Contact.dialogEmployees OBJECTS o INPUT DO employee(b) <- o;
+            IF employee(b) THEN {
+                IF bonus(year(b),quarter(b),employee(b)) THEN {
+                    MESSAGE 'Выбранный сотрудник уже есть в премиях за текущий квартал';
+                }
+                ELSE {
+                    quarter(b) <- quarter(r);
+                    year(b) <- year(r);
+                    APPLY ;
+                }
+            }
+        }
+    }
+} IMAGE 'add.png';
+
+EXTEND FORM bonuses
+    PROPERTIES(r) READONLYIF closed(r) newBonus TOOLBAR DRAW b
+;
+
+///// Удаление отмеченных записей
+countInBonus = GROUP SUM 1 IF in(Bonus b) AND b IS Bonus BY reportingQuarter(year(b),quarter(b));
+
+deleteInBonus 'Удалить' (Bonus bon)  {
+    IF countInBonus(reportingQuarter(year(bon),quarter(bon))) THEN {
+        ASK 'Вы действительно хотите удалить отмеченные записи за '+ quarter(bon) + ' квартал ' + year(bon) + 'г. '+
+            '? \n\n Количество отмеченных записей "Премия" за отчетный квартал: ' + countInBonus(reportingQuarter(year(bon),quarter(bon))) DO {
+            NEWSESSION NESTED LOCAL {
+                DELETE Bonus b WHERE b IS Bonus AND in(b) AND year(b)=year(bon) AND quarter(b)=quarter(bon);
+                APPLY ;
+            }
+        }
+    }
+    ELSE {
+        ASK 'Вы действительно хотите удалить текущую запись "Премия"  ?' DO {
+            NEWSESSION NESTED LOCAL {
+                DELETE bon;
+                APPLY ;
+            }
+        }
+    }
+} IMAGE 'delete.png';
+
+EXTEND FORM bonuses
+    PROPERTIES(b) READONLYIF closed(r) deleteInBonus TOOLBAR
+;
+
+/// Занесение рассчитанных значений премии в поля "Премия за квартал" зарплаты (Salary) 
+FORM listReportingMonthNotClosed 'Отчетный месяц, в который занести премию'
+    OBJECTS r = ReportingMonth
+    PROPERTIES(r) READONLY nameMonth, year, curRate, note
+    FILTERS NOT closed(r)
+;
+
+setBonusInSalary 'Занести премию в зарплату' (ReportingQuarter rq) {
+    DIALOG listReportingMonthNotClosed OBJECTS r INPUT DO {
+        APPLY ;
+        NEWSESSION {
+            LOCAL countBonus   = INTEGER ();
+            LOCAL countSalary  = INTEGER ();
+            countBonus() <- 0;
+            countSalary() <- 0;
+            
+            FOR Bonus b IS Bonus AND year(b) = year(rq) AND quarter(b) = quarter(rq) AND sumBonus(b) > 0.0 DO {
+                countBonus() <- countBonus() + 1;
+                IF salary(employee(b), year(r), month(r)) THEN {
+                    sumBonusQuarter(salary(employee(b), year(r), month(r))) <- sumBonus(b);
+                    countSalary() <- countSalary() + 1;
+                }
+            }
+            APPLY NESTED LOCAL ;
+            MESSAGE 'Количество записей с рассчитанной премией: ' + countBonus() + 
+                    '\n\nКоличество занесенных значений в зарплаты сотрудников: ' + countSalary();
+        }
+    }
+}
+
+EXTEND FORM bonuses
+    PROPERTIES(r) READONLYIF closed(r) setBonusInSalary TOOLBAR
+;
+///
