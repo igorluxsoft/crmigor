@@ -447,11 +447,12 @@ newTransfer 'Добавить' (ReportingMonth r, Salary s) {
 
 FORM salaries 'Начисление зарплаты'
     OBJECTS r = ReportingMonth
-    PROPERTIES(r) READONLY BACKGROUND background(r) nameMonth, year, curRate, sumBonus, closed, note
+    PROPERTIES(r) READONLY BACKGROUND background(r) nameMonth, numberMonth, year, curRate, sumBonus, closed, note
     PROPERTIES(r) NEWSESSION editReportingMonth TOOLBAR 
     PROPERTIES(r) READONLYIF countSalaryReportingMonth(r) OR closed(r) NEWSESSION DELETE TOOLBAR AFTER editReportingMonth(r)
     PROPERTIES(r) READONLYIF countSalaryReportingMonth(r) OR closed(r) addAllSalaries TOOLBAR 
     PROPERTIES(r) READONLYIF closed(r) transferDeviaNextMonth TOOLBAR AFTER addAllSalaries(r)
+    ORDERS year(r), numberMonth(r)
     
     OBJECTS s = Salary
     PROPERTIES(s) BACKGROUND background(s) in

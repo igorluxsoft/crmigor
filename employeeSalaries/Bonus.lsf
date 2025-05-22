@@ -204,12 +204,13 @@ bgcolor10() = CASE WHEN numberKoeffBonus(currentUser())=10 THEN RGB(212,255,212)
 
 
 FORM bonuses 'Начисление премии'
-    OBJECTS r = ReportingQuarter
+    OBJECTS r = ReportingQuarter LAST 
     PROPERTIES(r) READONLY BACKGROUND background(r) quarter, year, curRate, sumBonus, sumBonusByn, closed, note
     PROPERTIES(r) READONLY BACKGROUND background(r) koeffAll, priceOnePoint
     PROPERTIES(r) NEWSESSION editReportingQuarter TOOLBAR
     PROPERTIES(r) READONLYIF countBonusReportingQuarter(r) OR closed(r) NEWSESSION DELETE TOOLBAR AFTER editReportingQuarter(r)
     PROPERTIES(r) READONLYIF countBonusReportingQuarter(r) OR closed(r) addAllEmployee TOOLBAR
+    ORDERS year(r), quarter(r)
     
     OBJECTS b = Bonus
     PROPERTIES(b) in
