@@ -1,0 +1,69 @@
+MODULE DocFirm;
+
+REQUIRE Dashboard;
+
+NAMESPACE DocFirm;
+
+CLASS DocFirm 'Документ фирмы';
+TABLE docFirm (DocFirm);
+
+name 'Наименование документа' = DATA ISTRING[200] (DocFirm);
+date 'Дата документа' = DATA DATE (DocFirm);
+note 'Примечание' = DATA STRING (DocFirm);
+file 'Файл документа' = DATA FILE (DocFirm);
+
+onLoadFile 'Загрузить документ' (DocFirm d) {
+    INPUT f = FILE DO file(d) <- f;
+}
+
+onDeleteFile 'Удалить документ' (DocFirm d) {
+    file(d) <- NULL;
+}
+
+FORM docFirm 'Документ фирмы'
+    OBJECTS d = DocFirm PANEL
+    PROPERTIES(d) date, name, note
+    PROPERTIES(d) onLoadFile, onDeleteFile SHOWIF file(d)
+    
+    EDIT DocFirm OBJECT d
+;
+
+DESIGN docFirm {
+    OBJECTS {
+        NEW cnt1 {
+            alignment = STRETCH;
+            MOVE PROPERTY(date(d));
+            MOVE PROPERTY(name(d)) {fill=1; alignment = STRETCH;}
+            MOVE PROPERTY(note(d)) {fill=1; alignment = STRETCH;}
+            MOVE PROPERTY(onLoadFile(d));
+            MOVE PROPERTY(onDeleteFile(d));
+        }
+    }
+}
+
+onOpenFile 'Просмотр документа' (DocFirm d) {
+    open(file(d));
+}
+
+FORM docFirms 'Документы фирмы'
+    OBJECTS d = DocFirm LAST
+    PROPERTIES(d) READONLY date, name, note
+    
+    ORDERS date(d), name(d)
+    PROPERTIES(d) onOpenFile TOOLBAR 
+    PROPERTIES(d) NEWSESSION NEW, EDIT, DELETE
+;
+
+DESIGN docFirms {
+    BOX(d) { 
+        PROPERTY(date(d)) {charWidth = 10;}
+        PROPERTY(name(d)) {charWidth = 100;}
+        PROPERTY(note(d)) {charWidth = 50;}
+    }
+}
+
+NAVIGATOR {
+    dashboard {
+        NEW docFirms;
+    }
+}
