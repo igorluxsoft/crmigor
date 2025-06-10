@@ -139,6 +139,8 @@ FORM registerLiability 'Журнал ответственностей'
 NAVIGATOR {
     employeeFolder {
         NEW listLiability;
+    }
+    dashboard {
         NEW registerLiability;
     }
 }
