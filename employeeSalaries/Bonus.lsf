@@ -347,17 +347,24 @@ FORM listReportingMonthNotClosed 'Отчетный месяц, в который
 
 setBonusInSalary 'Занести премию в зарплату' (ReportingQuarter rq) {
     DIALOG listReportingMonthNotClosed OBJECTS r INPUT DO {
-        APPLY ;
+        APPLY ; // нужно, чтобы сохранить введенные коэффициенты !!!
         NEWSESSION {
             LOCAL countBonus   = INTEGER ();
             LOCAL countSalary  = INTEGER ();
+            LOCAL s = Salary();
             countBonus() <- 0;
             countSalary() <- 0;
             
             FOR Bonus b IS Bonus AND year(b) = year(rq) AND quarter(b) = quarter(rq) AND sumBonus(b) > 0.0 DO {
                 countBonus() <- countBonus() + 1;
                 IF salary(employee(b), year(r), month(r)) THEN {
-                    sumBonusQuarter(salary(employee(b), year(r), month(r))) <- sumBonus(b);
+                    s() <- salary(employee(b), year(r), month(r));
+                    sumBonusQuarter(s()) <- sumBonus(b);
+                    // пересчитать "Сумма к выплате" и отклонения !!!
+                    sumPay(s()) <- sumSalary(s()) (+) sumBonus1(s()) (+) sumBonus2(s()) (+) sumBonus3(s()) (+) sumBonusQuarter(s()) (-) sumFine1(s()) (-) sumFine2(s()) (-) sumFine3(s());
+                    deltaPay(s())  <- sumPay(s()) (-) sumTransfer(s()) (-) payExtra(s()) (-) payExtraCash(s()) ;
+                    deltaReal(s()) <- sumPay(s()) (-) sumTransfer(s());
+                    //
                     countSalary() <- countSalary() + 1;
                 }
             }
