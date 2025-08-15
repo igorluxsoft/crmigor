@@ -16,17 +16,17 @@ DESIGN employee {
     }
 }
 
-quarter 'Квартал' (INTEGER nm) = CASE WHEN nm < 4 THEN 1
-    WHEN nm > 3 AND nm < 7  THEN 2
-    WHEN nm > 6 AND nm < 10 THEN 3
-    WHEN nm > 9  THEN 4
-;
+quarter 'Квартал' (INTEGER nm) = ((nm-1) / 3)+1;
+// CASE WHEN nm < 4 THEN 1
+//    WHEN nm > 3 AND nm < 7  THEN 2
+//    WHEN nm > 6 AND nm < 10 THEN 3
+//    WHEN nm > 9  THEN 4;
 
 quarter 'Квартал' (Salary s) = CASE WHEN numberMonth(s) < 4 THEN 1
     WHEN numberMonth(s) > 3 AND numberMonth(s) < 7  THEN 2
     WHEN numberMonth(s) > 6 AND numberMonth(s) < 10 THEN 3
     WHEN numberMonth(s) > 9  THEN 4
-;
+    MATERIALIZED ;
 
 
 CLASS ReportingQuarter 'Отчетный квартал';
@@ -74,12 +74,12 @@ koeff10 'Коэфф-т 10' = DATA INTEGER (Bonus) ;
 
 countKoeff 'Кол-во введенных коэффициентов' (Bonus b) = (IF koeff1(b) THEN 1) (+) (IF koeff2(b) THEN 1) (+) (IF koeff3(b) THEN 1) (+)
     (IF koeff4(b) THEN 1) (+) (IF koeff5(b) THEN 1) (+) (IF koeff6(b) THEN 1) (+)
-    (IF koeff7(b) THEN 1) (+) (IF koeff8(b) THEN 1) (+) (IF koeff9(b) THEN 1) (+) (IF koeff10(b) THEN 1) ;
+    (IF koeff7(b) THEN 1) (+) (IF koeff8(b) THEN 1) (+) (IF koeff9(b) THEN 1) (+) (IF koeff10(b) THEN 1) MATERIALIZED;
 
 koeffItog 'Коэффициент итоговый' (Bonus b) = IF countKoeff(b) > 0 THEN
-    round2((NUMERIC[12,2](koeff1(b) (+) koeff2(b) (+) koeff3(b) (+) koeff4(b) (+) koeff5(b) (+) koeff6(b) (+) koeff7(b) (+) koeff8(b) (+) koeff9(b) (+) koeff10(b))) / countKoeff(b));
+    round2((NUMERIC[12,2](koeff1(b) (+) koeff2(b) (+) koeff3(b) (+) koeff4(b) (+) koeff5(b) (+) koeff6(b) (+) koeff7(b) (+) koeff8(b) (+) koeff9(b) (+) koeff10(b))) / countKoeff(b)) MATERIALIZED;
 
-koeffAll 'Коэффициент общий' (ReportingQuarter r) = GROUP SUM koeffItog(Bonus b) IF year(b)=year(r) AND quarter(b)=quarter(r);
+koeffAll 'Коэффициент общий' (ReportingQuarter r) = GROUP SUM koeffItog(Bonus b) IF year(b)=year(r) AND quarter(b)=quarter(r) MATERIALIZED;
 
 sumBonusByn 'Сумма премии, BYN' (ReportingQuarter r) = round0(sumBonus(r) * curRate(r));
 priceOnePoint 'Цена одного балла' (ReportingQuarter r) = round2(sumBonus(r) * curRate(r) / koeffAll(r));
@@ -96,7 +96,7 @@ timeAbsence 'Отсутствие, часы' (Bonus b) = GROUP SUM hours(Absence
 
 allHours 'Итого, часов' (Bonus b) = totalHours(b) (+) timeAbsence(b);
 
-absenceHours 'Кол-во часов' (Bonus b, AbsenceReason r) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(b) AND 
+absenceHours 'Кол-во часов' (Bonus b, AbsenceReason r) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(b) AND
     reason(a)=r AND extractYear(d)=year(b) AND quarter(extractMonthNumber(d))=quarter(b) CHARWIDTH 5;
 
 /// Исп. для ввода новой записи (корр-ка всех полей)
@@ -157,7 +157,7 @@ DESIGN editReportingQuarter {
 editReportingQuarter 'Редактировать'(ReportingQuarter r) {
     NEWSESSION {
         DIALOG  editReportingQuarter OBJECTS r = r NOMANAGESESSION DO {
-            
+
         } ELSE {
             CANCEL;
         }
@@ -181,7 +181,7 @@ addAllEmployee 'Добавить сотрудников' (ReportingQuarter r) {
     maxQuarter() <- NULL;
     maxYear()  <- GROUP MAX year(Bonus b);
     maxQuarter() <- GROUP MAX quarter(Bonus b) IF year(b)=maxYear() ;
-    
+
     FOR Employee e IS Employee AND NOT inactive(e) AND personalAccount(e) AND NOT dateDismissal(e)   NEW b = Bonus DO {
         quarter(b) <- quarter(r);
         year(b) <- year(r);
@@ -206,25 +206,25 @@ bgcolor10() = CASE WHEN numberKoeffBonus(currentUser())=10 THEN RGB(212,255,212)
 
 
 FORM bonuses 'Начисление премии'
-    OBJECTS r = ReportingQuarter LAST 
+    OBJECTS r = ReportingQuarter LAST
     PROPERTIES(r) READONLY BACKGROUND background(r) quarter, year, curRate, sumBonus, sumBonusByn, closed, note
     PROPERTIES(r) READONLY BACKGROUND background(r) koeffAll, priceOnePoint
     PROPERTIES(r) NEWSESSION editReportingQuarter TOOLBAR
     PROPERTIES(r) READONLYIF countBonusReportingQuarter(r) OR closed(r) NEWSESSION DELETE TOOLBAR AFTER editReportingQuarter(r)
     PROPERTIES(r) READONLYIF countBonusReportingQuarter(r) OR closed(r) addAllEmployee TOOLBAR
     ORDERS year(r), quarter(r)
-    
+
     OBJECTS b = Bonus
     PROPERTIES(b) in
-    PROPERTIES(b) READONLY nameEmployee 
+    PROPERTIES(b) READONLY nameEmployee
     PROPERTIES(b) SHOWIF 5=7 quarter, year
     ORDERS nameEmployee(b)
     FILTERS year(b)=year(r) AND quarter(b)=quarter(r)
-    
+
     OBJECTS m = Month
     PROPERTIES(m) number SHOWIF 5=7
     FILTERS quarter(number(m))=quarter(r)
-    
+
     PROPERTIES READONLY sumPay(b,m) COLUMNS (m) HEADER staticCaption(m)+', к выплате'
     ORDERS number(m)
     PROPERTIES(b) READONLY totalHours, timeAbsence, allHours
@@ -238,13 +238,13 @@ FORM bonuses 'Начисление премии'
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor8() koeff8
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor9() koeff9
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor10() koeff10
-    
+
     PROPERTIES(b) READONLY koeffItog, sumBonus
-    
+
     OBJECTS a = AbsenceReason
     PROPERTIES(a) name
     PROPERTIES(b,a) absenceHours
-    ORDERS absenceHours(b,a) DESC 
+    ORDERS absenceHours(b,a) DESC
     FILTERS absenceHours(b,a)
 ;
 
@@ -282,7 +282,7 @@ DESIGN bonuses {
         height = 200;
         width = 470;
         MOVE BOX(a);
-    }    
+    }
     MOVE TOOLBARBOX;
     TOOLBAR (r) {
         MOVE PROPERTY(newReportingQuarter()) FIRST;
@@ -354,7 +354,7 @@ setBonusInSalary 'Занести премию в зарплату' (ReportingQua
             LOCAL s = Salary();
             countBonus() <- 0;
             countSalary() <- 0;
-            
+
             FOR Bonus b IS Bonus AND year(b) = year(rq) AND quarter(b) = quarter(rq) AND sumBonus(b) > 0.0 DO {
                 countBonus() <- countBonus() + 1;
                 IF salary(employee(b), year(r), month(r)) THEN {
@@ -369,8 +369,8 @@ setBonusInSalary 'Занести премию в зарплату' (ReportingQua
                 }
             }
             APPLY NESTED LOCAL ;
-            MESSAGE 'Количество записей с рассчитанной премией: ' + countBonus() + 
-                    '\n\nКоличество занесенных значений в зарплаты сотрудников: ' + countSalary();
+            MESSAGE 'Количество записей с рассчитанной премией: ' + countBonus() +
+                '\n\nКоличество занесенных значений в зарплаты сотрудников: ' + countSalary();
         }
     }
 }
