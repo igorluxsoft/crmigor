@@ -1,0 +1,9 @@
+MODULE TimesheetDashboardDop;
+
+REQUIRE TimesheetDashboard, ProjectExternal;
+
+NAMESPACE Project;
+
+EXTEND FORM timesheetDashboard
+    PROPERTIES(t) nameExternal AFTER nameIssue(t)
+;

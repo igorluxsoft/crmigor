@@ -1,0 +1,20 @@
+MODULE TimeEntryDop;
+
+REQUIRE TimeEntry, ProjectRedmineNew;
+
+NAMESPACE Project;
+
+dateTimeCreated 'Дата/время создания задачи' (TimeEntry t) = dateTimeCreated(issue(t));
+doneRatio 'Готовность задачи' (TimeEntry t) = doneRatio(issue(t));
+priorityName 'Приоритет задачи' (TimeEntry t) = priorityName(issue(t));
+separateContract 'Отд. договор' (TimeEntry t) = separateContract(issue(t));
+nameAuthor 'Автор задачи' (TimeEntry t) = nameAuthor(issue(t));
+nameAssignedTo 'Назначена задача' (TimeEntry t) = nameAssignedTo(issue(t));
+nameTracker 'Трекер задачи' (TimeEntry t) = nameTracker(issue(t));
+nameStatus 'Статус задачи' (TimeEntry t) = nameStatus(issue(t));
+
+
+EXTEND FORM timeEntries
+    PROPERTIES(o) READONLYIF isReadonly() dateTimeCreated, doneRatio, priorityName, separateContract,
+        nameAuthor, nameAssignedTo, nameTracker, nameStatus
+;
