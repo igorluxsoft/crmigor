@@ -205,7 +205,7 @@ bgcolor9() = CASE WHEN numberKoeffBonus(currentUser())=9 THEN RGB(212,255,212);
 bgcolor10() = CASE WHEN numberKoeffBonus(currentUser())=10 THEN RGB(212,255,212);
 
 
-FORM bonuses 'Начисление премии'
+FORM bonuses 'Начисление премии ----------'
     OBJECTS r = ReportingQuarter LAST
     PROPERTIES(r) READONLY BACKGROUND background(r) quarter, year, curRate, sumBonus, sumBonusByn, closed, note
     PROPERTIES(r) READONLY BACKGROUND background(r) koeffAll, priceOnePoint
