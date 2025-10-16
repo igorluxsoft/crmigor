@@ -1,6 +1,6 @@
 MODULE Salary;
 
-REQUIRE EmployeeDop, MoveMoneyOpreration, EmployeeAbsence, MoneyAccounting;
+REQUIRE EmployeeDop, MoveMoneyOpreration, EmployeeAbsence, MoneyAccounting, TimeEntry;
 
 NAMESPACE Salary;
 
@@ -887,6 +887,38 @@ showSalariesEmployee 'По сотруднику' (Salary s){
 }
 EXTEND FORM salaries
     PROPERTIES(s) showSalariesEmployee TOOLBAR 
+;
+
+///// Информация по сотруднику - трудозатраты по проектам
+FORM salariesEmployeeHoursProject 'Трудозатраты по проектам'
+    OBJECTS m = Month PANEL, y = INTEGER PANEL
+    PROPERTIES year 'Год' = VALUE (y), month 'Месяц' = name(m) SELECTOR
+    
+    OBJECTS e = Employee PANEL
+    PROPERTIES(e) fullName SELECTOR
+
+    OBJECTS p = Project
+    PROPERTIES READONLY name(p), hours(e, p, y, m)
+    ORDERS hours(e, p, y, m) DESC
+    FILTERS hours(e, p, y, m)
+;
+
+DESIGN salariesEmployeeHoursProject {
+    NEW cnt1 {
+        horizontal = FALSE ;
+        MOVE PROPERTY(fullName(e)) {charWidth = 60;}
+        MOVE PROPERTY (month) ;
+        MOVE PROPERTY (year) ;
+    }
+    MOVE BOX(p);
+    MOVE TOOLBARBOX;
+}
+
+showSalariesEmployeeHoursProject 'Трудозатраты' (Salary s){
+    SHOW salariesEmployeeHoursProject OBJECTS m = month(s), y = year(s),  e = employee(s);
+}
+EXTEND FORM salaries
+    PROPERTIES(s) showSalariesEmployeeHoursProject TOOLBAR
 ;
 
 ///// Сверка сумм в журналах "Выплаты" и "Расходы" по безналичным рублям
