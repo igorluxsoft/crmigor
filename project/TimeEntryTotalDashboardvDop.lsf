@@ -1,0 +1,53 @@
+MODULE TimeEntryTotalDashboardvDop;
+
+REQUIRE TimeEntryTotalDashboard;
+
+NAMESPACE Project;
+
+hours 'Трудозатраты' (Project p, DATE df, DATE dt) = GROUP SUM hours(TimeEntry t) IF date(t) >= df AND date(t) <= dt BY project(t);
+
+FORM hoursProjects 'Трудозатраты по проектам'
+    OBJECTS df = DATE PANEL, dt = DATE PANEL
+    PROPERTIES dFrom 'Дата с' = VALUE (df), dTo 'Дата по' =  VALUE (dt)
+    
+    OBJECTS p = Project
+    PROPERTIES(p) READONLY name
+    PROPERTIES(p,df,dt) READONLY hours
+    FILTERS hours(p,df,dt)
+    ORDERS hours(p,df,dt) DESC
+
+    OBJECTS e = Employee
+    PROPERTIES(e) READONLY fullName
+    PROPERTIES(p,e,df,dt) READONLY hours
+    FILTERS hours(p,e,df,dt)
+    ORDERS hours(p,e,df,dt) DESC
+    
+    EVENTS ON INIT {
+        SEEK hoursProjects.df = firstDayOfMonth(currentDate());
+        SEEK hoursProjects.dt = currentDate();
+    }
+;
+
+DESIGN hoursProjects {
+    OBJECTS {
+        NEW dates FIRST {
+            horizontal = TRUE;
+            caption = 'Даты ';
+            MOVE PROPERTY (dFrom);
+            MOVE PROPERTY (dTo);
+        }
+        NEW tab {
+            fill = 1;
+            horizontal = TRUE;
+            MOVE BOX(p) {caption = 'Проекты';}
+            MOVE BOX(e) {caption = 'Сотрудники';}
+        }
+        
+    }    
+}
+
+NAVIGATOR {
+    project {
+        NEW hoursProjects;
+    }
+}
