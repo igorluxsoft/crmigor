@@ -866,7 +866,7 @@ FORM salariesEmployee 'Информация по сотруднику'
     PROPERTIES(e) fullName SELECTOR 
     
     OBJECTS s = Salary LAST 
-    PROPERTIES(s) READONLY nameMonth, year, sumSalary, sumBonus, sumBonus1, sumBonus2, sumBonus3, sumBonusQuarter, sumFine, sumFine1, sumFine2, sumFine3, sumPay, sumPayUSD, sumTransfer, deltaReal
+    PROPERTIES(s) READONLY numberMonth, nameMonth, year, sumSalary, sumBonus, sumBonus1, sumBonus2, sumBonus3, sumBonusQuarter, sumFine, sumFine1, sumFine2, sumFine3, sumPay, sumPayUSD, sumTransfer, deltaReal
     PROPERTIES(s) READONLY DRAW e note1, note2
     FILTERS employee(s)=e
 ;

@@ -1,26 +1,35 @@
 MODULE TimeEntryTotalDashboardvDop;
 
-REQUIRE TimeEntryTotalDashboard;
+REQUIRE TimeEntryTotalDashboard, ProjectExternal;
 
 NAMESPACE Project;
 
 hours 'Трудозатраты' (Project p, DATE df, DATE dt) = GROUP SUM hours(TimeEntry t) IF date(t) >= df AND date(t) <= dt BY project(t);
+hours 'Трудозатраты' (Employee e, Issue i, DATE df, DATE dt) = GROUP SUM hours(TimeEntry t) IF date(t) >= df AND date(t) <= dt BY employee(t), issue(t);
 
 FORM hoursProjects 'Трудозатраты по проектам'
     OBJECTS df = DATE PANEL, dt = DATE PANEL
     PROPERTIES dFrom 'Дата с' = VALUE (df), dTo 'Дата по' =  VALUE (dt)
     
     OBJECTS p = Project
-    PROPERTIES(p) READONLY name
+    PROPERTIES(p) READONLY name, nameExternal
     PROPERTIES(p,df,dt) READONLY hours
     FILTERS hours(p,df,dt)
     ORDERS hours(p,df,dt) DESC
-
+    
     OBJECTS e = Employee
     PROPERTIES(e) READONLY fullName
     PROPERTIES(p,e,df,dt) READONLY hours
     FILTERS hours(p,e,df,dt)
     ORDERS hours(p,e,df,dt) DESC
+    
+    OBJECTS i = Issue
+    PROPERTIES(i) READONLY number, name, descriptionString, dateTimeCreated, nameAuthor, nameAssignedTo, nameTracker
+    PROPERTIES(i) open TOOLBAR 
+    PROPERTIES(e,i,df,dt) READONLY hours
+    FILTERS hours(e,i,df,dt),
+            project(i)==p
+    ORDERS number(i)
     
     EVENTS ON INIT {
         SEEK hoursProjects.df = firstDayOfMonth(currentDate());
@@ -39,8 +48,15 @@ DESIGN hoursProjects {
         NEW tab {
             fill = 1;
             horizontal = TRUE;
-            MOVE BOX(p) {caption = 'Проекты';}
-            MOVE BOX(e) {caption = 'Сотрудники';}
+            MOVE BOX(p) {
+                caption = 'Проекты';
+                fill = 1;
+            }
+            NEW tab2 {
+                MOVE BOX(e) {caption = 'Сотрудники';}
+                MOVE BOX(i) {caption = 'Задачи';}
+                fill = 4;
+            }
         }
         
     }    
