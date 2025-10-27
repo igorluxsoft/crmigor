@@ -94,8 +94,6 @@ totalHours 'Отмечено часов' (Bonus b) = GROUP SUM totalHours(Employ
 
 timeAbsence 'Отсутствие, часы' (Bonus b) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(b) AND extractYear(d)=year(b) AND quarter(extractMonthNumber(d))=quarter(b);
 
-allHours 'Итого, часов' (Bonus b) = totalHours(b) (+) timeAbsence(b);
-
 absenceHours 'Кол-во часов' (Bonus b, AbsenceReason r) = GROUP SUM hours(Absence a, DATE d) IF employee(a)=employee(b) AND
     reason(a)=r AND extractYear(d)=year(b) AND quarter(extractMonthNumber(d))=quarter(b) CHARWIDTH 5;
 
@@ -227,7 +225,7 @@ FORM bonuses 'Начисление премии'
 
     PROPERTIES READONLY sumPay(b,m) COLUMNS (m) HEADER staticCaption(m)+', к выплате'
     ORDERS number(m)
-    PROPERTIES(b) READONLY totalHours, timeAbsence, allHours
+    PROPERTIES(b) READONLY totalHours, timeAbsence
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor1() koeff1
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor2() koeff2
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor3() koeff3
