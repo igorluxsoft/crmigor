@@ -202,6 +202,7 @@ bgcolor8() = CASE WHEN numberKoeffBonus(currentUser())=8 THEN RGB(212,255,212);
 bgcolor9() = CASE WHEN numberKoeffBonus(currentUser())=9 THEN RGB(212,255,212);
 bgcolor10() = CASE WHEN numberKoeffBonus(currentUser())=10 THEN RGB(212,255,212);
 
+hours 'Трудозатраты' (Bonus b, Project p) = GROUP SUM hours(employee(b), year(b), Month m, p) IF quarter(b)==quarter(number(m));
 
 FORM bonuses 'Начисление премии'
     OBJECTS r = ReportingQuarter LAST
@@ -244,6 +245,11 @@ FORM bonuses 'Начисление премии'
     PROPERTIES(b,a) absenceHours
     ORDERS absenceHours(b,a) DESC
     FILTERS absenceHours(b,a)
+
+    OBJECTS p = Project
+    PROPERTIES READONLY name(p), hours(b, p)
+    ORDERS hours(b, p) DESC
+    FILTERS hours(b, p)
 ;
 
 NAVIGATOR {
@@ -276,11 +282,19 @@ DESIGN bonuses {
         caption='Отчетный квартал: '+minQuarterNoClosed()+' '+minYearNoClosed()+'г. ';
     }
     MOVE BOX(b) {fill=20;}
-    NEW cnt1 {
-        height = 200;
-        width = 470;
-        MOVE BOX(a);
-    }
+    NEW cnt {
+        horizontal = TRUE ;
+        NEW cnt1 {
+            height = 200;
+            width = 470;
+            MOVE BOX(a);
+        }
+        NEW cnt2 {
+            height = 200;
+            width = 570;
+            MOVE BOX(p);
+        }
+    }    
     MOVE TOOLBARBOX;
     TOOLBAR (r) {
         MOVE PROPERTY(newReportingQuarter()) FIRST;
