@@ -1,6 +1,6 @@
 MODULE Salary;
 
-REQUIRE EmployeeDop, MoveMoneyOpreration, EmployeeAbsence, MoneyAccounting, TimeEntry;
+REQUIRE EmployeeDop, MoveMoneyOpreration, EmployeeAbsence, MoneyAccounting, TimeEntry, ProjectExternal;
 
 NAMESPACE Salary;
 
@@ -898,7 +898,7 @@ FORM salariesEmployeeHoursProject 'Трудозатраты по проекта�
     PROPERTIES(e) fullName SELECTOR
 
     OBJECTS p = Project
-    PROPERTIES READONLY name(p), hours(e, p, y, m)
+    PROPERTIES READONLY name(p), nameExternal(p), hours(e, p, y, m)
     ORDERS hours(e, p, y, m) DESC
     FILTERS hours(e, p, y, m)
 ;

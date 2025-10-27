@@ -1,6 +1,6 @@
 MODULE Bonus;
 
-REQUIRE Salary, TimeEntryTotalDashboard;
+REQUIRE Salary, TimeEntryTotalDashboard, ProjectExternal;
 
 NAMESPACE Bonus;
 
@@ -247,7 +247,7 @@ FORM bonuses 'Начисление премии'
     FILTERS absenceHours(b,a)
 
     OBJECTS p = Project
-    PROPERTIES READONLY name(p), hours(b, p)
+    PROPERTIES READONLY name(p), nameExternal(p), hours(b, p)
     ORDERS hours(b, p) DESC
     FILTERS hours(b, p)
 ;
