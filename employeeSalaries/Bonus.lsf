@@ -350,6 +350,13 @@ EXTEND FORM bonuses
     PROPERTIES(b) READONLYIF closed(r) deleteInBonus TOOLBAR
 ;
 
+// пересчитать "Сумма к выплате" и отклонения !!!
+recalculateSumPay 'Перерасчет сумм в записи Зарплата' (Salary s) {
+    sumPay(s) <- sumSalary(s) (+) sumBonus1(s) (+) sumBonus2(s) (+) sumBonus3(s) (+) sumBonusQuarter(s) (-) sumFine1(s) (-) sumFine2(s) (-) sumFine3(s);
+    deltaPay(s) <- sumPay(s) (-) sumTransfer(s) (-) payExtra(s) (-) payExtraCash(s) ;
+    deltaReal(s) <- sumPay(s) (-) sumTransfer(s);
+}
+
 /// Занесение рассчитанных значений премии в поля "Премия за квартал" зарплаты (Salary) 
 FORM listReportingMonthNotClosed 'Отчетный месяц, в который занести премию'
     OBJECTS r = ReportingMonth
@@ -364,25 +371,38 @@ setBonusInSalary 'Занести премию в зарплату' (ReportingQua
             LOCAL countBonus   = INTEGER ();
             LOCAL countSalary  = INTEGER ();
             LOCAL s = Salary();
+            LOCAL strNoFound = STRING ();
             countBonus() <- 0;
             countSalary() <- 0;
-
+            strNoFound() <- '';
+            
+            // сбросить предыдущие начисления премий в записях Зарплата 
+            FOR sumBonusQuarter(salary(Employee e, year(r), month(r))) DO {
+                sumBonusQuarter(salary(e, year(r), month(r))) <- NULL;
+                // пересчитать "Сумма к выплате" и отклонения !!!
+                recalculateSumPay(salary(e, year(r), month(r)));
+                //
+            }
+            //
+            
             FOR Bonus b IS Bonus AND year(b) = year(rq) AND quarter(b) = quarter(rq) AND sumBonus(b) > 0.0 DO {
                 countBonus() <- countBonus() + 1;
                 IF salary(employee(b), year(r), month(r)) THEN {
                     s() <- salary(employee(b), year(r), month(r));
                     sumBonusQuarter(s()) <- sumBonus(b);
                     // пересчитать "Сумма к выплате" и отклонения !!!
-                    sumPay(s()) <- sumSalary(s()) (+) sumBonus1(s()) (+) sumBonus2(s()) (+) sumBonus3(s()) (+) sumBonusQuarter(s()) (-) sumFine1(s()) (-) sumFine2(s()) (-) sumFine3(s());
-                    deltaPay(s())  <- sumPay(s()) (-) sumTransfer(s()) (-) payExtra(s()) (-) payExtraCash(s()) ;
-                    deltaReal(s()) <- sumPay(s()) (-) sumTransfer(s());
+                    recalculateSumPay(s());
                     //
                     countSalary() <- countSalary() + 1;
                 }
+                ELSE {
+                    strNoFound() <- strNoFound() + '\n' + nameEmployee(b);
+                }
             }
             APPLY NESTED LOCAL ;
+            IF length(strNoFound()) > 1 THEN strNoFound() <- '\n\n    ВНИМАНИЕ !!!  Не найдены в зарплате:\n' + strNoFound();
             MESSAGE 'Количество записей с рассчитанной премией: ' + countBonus() +
-                '\n\nКоличество занесенных значений в зарплаты сотрудников: ' + countSalary();
+                '\n\nКоличество занесенных значений в зарплаты сотрудников: ' + countSalary() + strNoFound();
         }
     }
 }

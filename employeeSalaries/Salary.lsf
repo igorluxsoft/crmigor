@@ -915,7 +915,7 @@ DESIGN salariesEmployeeHoursProject {
 }
 
 showSalariesEmployeeHoursProject 'Трудозатраты' (Salary s){
-    SHOW salariesEmployeeHoursProject OBJECTS m = month(s), y = year(s),  e = employee(s);
+    SHOW salariesEmployeeHoursProject OBJECTS m = month(s), y = year(s), e = employee(s);
 }
 EXTEND FORM salaries
     PROPERTIES(s) showSalariesEmployeeHoursProject TOOLBAR
