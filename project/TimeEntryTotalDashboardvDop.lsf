@@ -67,3 +67,31 @@ NAVIGATOR {
         NEW hoursProjects;
     }
 }
+
+fullNameEmployee 'Сотрудник' (Absence a) = fullName(employee(a));
+
+EXTEND FORM timeEntryDashboard
+    OBJECTS df = DATE PANEL, dt = DATE PANEL
+    PROPERTIES df 'Дата с' = VALUE(df), dt 'Дата по' = VALUE(dt)
+    
+    OBJECTS asat = (as = Absence, dd = DATE)
+    PROPERTIES READONLY vdd=VALUE(dd), extractDOWName(dd)
+    PROPERTIES READONLY fullNameEmployee(as), hours(as, dd), nameReason(as), dateFrom(as), dateTo(as) 
+    ORDERS vdd, fullNameEmployee(as)
+    FILTERS hours(as, dd),
+            dd >= df AND dd <= dt
+;
+
+DESIGN timeEntryDashboard {
+    headerTab  {
+        NEW period {
+            caption = 'За период';
+            NEW filterPeriod {
+                horizontal = TRUE;
+                MOVE PROPERTY (df);
+                MOVE PROPERTY (dt);
+            }
+            MOVE BOX (asat);
+        }
+    }
+}
