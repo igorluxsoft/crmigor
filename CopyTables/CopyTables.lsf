@@ -1,6 +1,6 @@
 MODULE CopyTables;
 
-REQUIRE Salary;
+REQUIRE Salary, TempClassReportsDop;
 
 NAMESPACE CopyTables;
 
@@ -488,4 +488,142 @@ deleteInRegisterAccounting 'Удалить' (RegisterAccounting r)  {
 EXTEND FORM viewRegisterAccounting
     PROPERTIES(r) deleteInRegisterAccounting TOOLBAR LAST
 ;
-/////
+
+///// Отчет по сравнению сумм в журналах "Движение денег" и "Движение денег(КОПИЯ)" за интервал дат
+//sumMm 'Сумма в журнале "Движение денег"' = DATA LOCAL NESTED NUMERIC[14,2] (DATE, RegisterAccounting, MoveMoneyOpreration, Analytics, Customer);
+//sumCp 'Сумма в журнале "Движение денег(КОПИЯ)"' = DATA LOCAL NESTED NUMERIC[14,2] (DATE, RegisterAccounting, MoveMoneyOpreration, Analytics, Customer);
+//countDiffSum 'Количество расхождений' = DATA LOCAL NESTED INTEGER ();
+//
+//FORM reportForComparisonSumMoneyMove 'Сверка сумм в журналах "Движение денег" и "Движение денег(КОПИЯ)"'
+//    OBJECTS ob = (d = DATE, r = RegisterAccounting, o = MoveMoneyOpreration, a = Analytics, c = Customer)
+//    PROPERTIES d = VALUE(d)
+//    PROPERTIES code(r), code(o), code(a), name(a), name(c)
+//    PROPERTIES sumMm(d,r,o,a,c), sumCp(d,r,o,a,c)
+//    
+//    ORDERS d, code(r), code(o), code(a), name(c)
+//    FILTERS sumMm(d,r,o,a,c) (-) sumCp(d,r,o,a,c)
+//;
+//
+//fillReportForComparisonSumMoneyMove 'Сформировать' (DATE df, DATE dt) {
+//    sumMm(DATE d, RegisterAccounting r, MoveMoneyOpreration o, Analytics a, Customer c) <- NULL ;
+//    sumCp(DATE d, RegisterAccounting r, MoveMoneyOpreration o, Analytics a, Customer c) <- NULL ;
+//    
+//    sumMm(DATE d, RegisterAccounting r, MoveMoneyOpreration o, Analytics a, Customer c) <- GROUP SUM summa(MoneyMove m) IF date(m)>=df AND date(m)<=dt AND date(m)=d AND 
+//        registerAccounting(m)=r AND operation(m)=o AND analytics(m)=a AND customer(m)=c;
+//    sumCp(DATE d, RegisterAccounting r, MoveMoneyOpreration o, Analytics a, Customer c) <- GROUP SUM summa(MoneyMoveCopy m) IF date(m)>=df AND date(m)<=dt AND date(m)=d AND
+//        registerAccounting(m)=r AND operation(m)=o AND analytics(m)=a AND customer(m)=c;
+//    
+//    countDiffSum() <- GROUP SUM 1 IF sumMm(DATE d, RegisterAccounting r, MoveMoneyOpreration o, Analytics a, Customer c) (-) sumCp(d,r,o,a,c) ;
+//    
+//    IF countDiffSum() AND countDiffSum() > 0 THEN
+//        PRINT reportForComparisonSumMoneyMove ;
+//    ELSE MESSAGE 'Расхождений при сверке сумм не обнаружено';
+//}
+
+noReport 'Не нужно включать в отчет' = DATA LOCAL BOOLEAN (MoneyMove);
+noReport 'Не нужно включать в отчет' = DATA LOCAL BOOLEAN (MoneyMoveCopy);
+
+FORM reportForComparisonSumMoneyMove 'Сверка сумм в журналах "Движение денег" и "Движение денег(КОПИЯ)"'
+    OBJECTS dd = (df = DATE, dt = DATE ) PANEL 
+    PROPERTIES df = VALUE(df), dt = VALUE(dt)
+    
+    OBJECTS t = TempClassReportsDop
+    PROPERTIES(t) pd1, ps1, ps2, ps3, ps4, pn1, pn2
+    ORDERS pd1(t), ps1(t), ps2(t), ps3(t), ps4(t)
+;
+
+fillReportForComparisonSumMoneyMove 'Сформировать' (DATE df, DATE dt) {
+    NEWSESSION {
+        newTempClassReportsDop();
+        noReport(MoneyMove m) <- NULL ;
+        noReport(MoneyMoveCopy mcp) <- NULL ;
+        LOCAL lFound = INTEGER ();
+
+        FOR date(MoneyMove m) >= df AND date(m) <= dt DO {
+            FOR date(MoneyMoveCopy mcp) = date(m) AND registerAccounting(m) = registerAccounting(mcp) AND operation(m) = operation(mcp) AND
+                (analytics(m) = analytics(mcp) OR (NOT analytics(m) AND NOT analytics(mcp))) AND
+                (customer(m) = customer(mcp) OR (NOT customer(m) AND NOT customer(mcp))) AND
+                summa(m) = summa(mcp) AND NOT noReport(mcp) DO {
+
+                noReport(m) <- TRUE ;
+                noReport(mcp) <- TRUE ;
+                BREAK ;
+            }
+
+        }
+
+        FOR date(MoneyMove m) >= df AND date(m) <= dt AND NOT noReport(m) DO {
+            NEW t = TempClassReportsDop {
+                pd1(t) <- date(m);
+                ps1(t) <- codeRegisterAccounting(m);
+                ps2(t) <- OVERRIDE codeOperation(m), ' ';
+                ps3(t) <- IF codeAnalytics(m) THEN CONCAT ' ', codeAnalytics(m), nameAnalytics(m) ELSE ' ';
+                ps4(t) <- OVERRIDE nameCustomer(m), ' ';
+                pn1(t) <- summa(m);
+            }
+        }
+        
+        FOR date(MoneyMoveCopy mcp) >= df AND date(mcp) <= dt AND NOT noReport(mcp) DO {
+            
+            lFound() <- 1 ;
+            
+            FOR pd1(TempClassReportsDop t)=date(mcp) AND ps1(t)=codeRegisterAccounting(mcp) AND ps2(t)=(OVERRIDE codeOperation(mcp),' ') AND
+                ps3(t)=(IF codeAnalytics(mcp) THEN CONCAT ' ', codeAnalytics(mcp), nameAnalytics(mcp) ELSE ' ') AND 
+                ps4(t)=(OVERRIDE nameCustomer(mcp), ' ') AND 
+                NOT pn2(t) DO {
+                
+                pn2(t) <- summa(mcp);
+                lFound() <- 0 ;
+                BREAK ;
+            }
+            
+            IF lFound() = 1 THEN {
+                NEW t = TempClassReportsDop {
+                    pd1(t) <- date(mcp);
+                    ps1(t) <- codeRegisterAccounting(mcp);
+                    ps2(t) <- OVERRIDE codeOperation(mcp), ' ';
+                    ps3(t) <- IF codeAnalytics(mcp) THEN CONCAT ' ', codeAnalytics(mcp), nameAnalytics(mcp) ELSE ' ';
+                    ps4(t) <- OVERRIDE nameCustomer(mcp), ' ';
+                    pn2(t) <- summa(mcp);
+                }
+            }
+        }
+        
+        IF countTempClassReportsDop() > 0 THEN
+            PRINT reportForComparisonSumMoneyMove OBJECTS df = df, dt = dt XLSX ;
+        ELSE MESSAGE 'Расхождений при сверке сумм не обнаружено';
+    }
+}    
+
+FORM reportForComparisonSumMoneyMoveParameters 'Сверка сумм в журналах "Движение денег" и "Движение денег (Копия)" '
+    OBJECTS df = DATE PANEL, dt = DATE PANEL
+    PROPERTIES df 'Дата с' = VALUE(df), dt 'Дата по' = VALUE(dt)
+    
+    PROPERTIES fillReportForComparisonSumMoneyMove(df, dt)
+    
+    EVENTS ON INIT {
+        SEEK reportForComparisonSumMoneyMoveParameters.df = firstDayOfMonth(currentDate());
+        SEEK reportForComparisonSumMoneyMoveParameters.dt = currentDate();
+    }
+;
+
+DESIGN reportForComparisonSumMoneyMoveParameters {
+    NEW report {
+        fill = 1;
+        NEW params {
+            MOVE PROPERTY(df);
+            MOVE PROPERTY(dt);
+        }
+        MOVE PROPERTY(fillReportForComparisonSumMoneyMove(df, dt));
+    }
+    MOVE TOOLBARBOX;
+}
+
+NAVIGATOR {
+    finance {
+        reports {
+            NEW reportForComparisonSumMoneyMoveParameters;
+        }
+    }
+}
+

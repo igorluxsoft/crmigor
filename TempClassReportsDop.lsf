@@ -1,0 +1,31 @@
+MODULE TempClassReportsDop;
+
+CLASS TempClassReportsDop 'Временные отчеты';
+
+pd1 'дата 1'     = DATA LOCAL DATE     (TempClassReportsDop);
+pd2 'дата 2'     = DATA LOCAL DATE     (TempClassReportsDop);
+
+pi1 'индекс 1'   = DATA LOCAL INTEGER  (TempClassReportsDop);
+pi2 'индекс 2'   = DATA LOCAL INTEGER  (TempClassReportsDop);
+
+pn1 'число 1'    = DATA LOCAL NUMERIC[14,2]  (TempClassReportsDop);
+pn2 'число 2'    = DATA LOCAL NUMERIC[14,2]  (TempClassReportsDop);
+pn3 'число 3'    = DATA LOCAL NUMERIC[14,2]  (TempClassReportsDop);
+
+ps1 'строка 1'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps2 'строка 2'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps3 'строка 3'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps4 'строка 4'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps5 'строка 5'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps6 'строка 6'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps7 'строка 7'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps8 'строка 8'   = DATA LOCAL STRING   (TempClassReportsDop);
+ps9 'строка 9'   = DATA LOCAL STRING   (TempClassReportsDop);
+
+pt1 'текст'      = DATA LOCAL TEXT     (TempClassReportsDop);
+
+newTempClassReportsDop '' () {
+    DELETE TempClassReportsDop  o1 WHERE o1 IS TempClassReportsDop;    // очищаем предыдущий результат
+}
+
+countTempClassReportsDop() = GROUP SUM 1 IF TempClassReportsDop t IS TempClassReportsDop;

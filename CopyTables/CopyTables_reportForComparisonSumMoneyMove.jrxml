@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.18.1.final using JasperReports Library version 6.12.0  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="CopyTables.reportForComparisonSumMoneyMove" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="f13da238-97a2-43d4-a6cd-dadf8666a0f7">
+	<property name="net.sf.jasperreports.export.xls.print.page.width" value="842"/>
+	<property name="net.sf.jasperreports.export.xls.print.page.height" value="595"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<style name="DefaultStyle" isDefault="true" vTextAlign="Middle" fontName="DejaVu Sans" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<style name="GroupCellStyle1" vTextAlign="Middle" fontSize="10">
+		<box>
+			<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+		</box>
+		<paragraph leftIndent="2" rightIndent="2"/>
+	</style>
+	<parameter name="dd_report" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="dd_source" class="net.sf.jasperreports.engine.JRDataSource"/>
+	<parameter name="dd_params" class="java.util.Map"/>
+	<parameter name="t_report" class="net.sf.jasperreports.engine.JasperReport"/>
+	<parameter name="t_source" class="net.sf.jasperreports.engine.JRDataSource"/>
+	<parameter name="t_params" class="java.util.Map"/>
+	<detail>
+		<band>
+			<subreport>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="0" height="0" uuid="2f619bde-be70-4c8e-a76c-d4d9b7e0cb00"/>
+				<parametersMapExpression><![CDATA[$P{dd_params}]]></parametersMapExpression>
+				<dataSourceExpression><![CDATA[$P{dd_source}]]></dataSourceExpression>
+				<subreportExpression><![CDATA[$P{dd_report}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band>
+			<subreport>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="0" height="0" uuid="ac9e438f-637c-4011-a2ab-a127e21a32d8"/>
+				<parametersMapExpression><![CDATA[$P{t_params}]]></parametersMapExpression>
+				<dataSourceExpression><![CDATA[$P{t_source}]]></dataSourceExpression>
+				<subreportExpression><![CDATA[$P{t_report}]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+</jasperReport>
