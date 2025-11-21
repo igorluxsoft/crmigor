@@ -205,20 +205,72 @@ DESIGN listRegisterAccountingSmall {
 showRegisterAccountingSmall 'Остатки по регистрам' {
     SHOW listRegisterAccountingSmall;
 }
-//
 
+// Функция удаления / создания записей с остатком на конец месяца (операция с кодом яя)
+createdBalanceEndMonth '' (RegisterAccounting r, DATE df, DATE dt) {
+    // создание операции в справочнике, если её нет
+    IF NOT uniqueCode('яя', '9') THEN {
+        NEW o = MoveMoneyOpreration {
+            code(o) <- 'яя';
+            name(o) <- 'Остаток на конец месяца';
+            sign(o) <- '9';
+        }
+    }
+    
+    // удаление записей с кодом яя за период дат
+    DELETE MoneyMove m WHERE m IS MoneyMove AND registerAccounting(m)=r AND operation(m)=uniqueCode('яя', '9') AND date(m)>=df AND date(m)<=dt;
+    
+    // создание записей с кодом яя за период дат
+    LOCAL dd = DATE ();
+    dd() <- lastDayOfMonth(df);
+    // плюс месяц к дате окончания периода, чтобы создалась последняя запись с кодом яя
+    LOCAL dend = DATE ();
+    dend() <- sumMonth(dt,1);
+    
+    // Переменная для остатка, иначе после добавления записи с кодом яя она последняя и остаток = null
+    LOCAL bal = NUMERIC[14,2] ();
+    
+    WHILE dd() <= dend() DO {
+        bal() <- balance(r,dd());
+        NEW m = MoneyMove {
+            date(m) <- dd();
+            registerAccounting(m) <- r;
+            operation(m) <- uniqueCode('яя', '9');
+            summa(m) <- 0.00;
+            balance(m) <- bal();
+            dateTimeEntry(m) <- currentDateTime();
+            userEntry(m) <- currentUser();
+        }
+        dd() <- sum(dd(),1);
+        dd() <- lastDayOfMonth(dd());
+    }
+}
+
+// Перерасчет остатков
 recalculateBalance 'Перерасчет остатков' () {
     DIALOG listRegisterAccounting OBJECTS r INPUT DO {
         NEWSESSION {
             IF NOT countSelectRegisterAccounting() THEN select(r) <- TRUE ;
             LOCAL bal = NUMERIC[12,2] ();
+            LOCAL dbeg = DATE ();
+            LOCAL dend = DATE ();
+            dend() <- currentDate() ;
             
             FOR select(RegisterAccounting ra) DO {
                 bal() <- 0.0;
+                dbeg() <- NULL ;
+                //dend() <- NULL ;
+                
                 FOR registerAccounting(MoneyMove m)==ra ORDER date(m), codeOperation(m), m DO {
                     bal() <- bal() (+) summa(m);
                     balance(m) <- bal();
+                    IF NOT dbeg() THEN dbeg() <- date(m);
+                    //dend() <- date(m);
                 }
+                // удаление и создание записей с кодом яя
+                IF dbeg() AND dend() THEN
+                    createdBalanceEndMonth(ra, dbeg(), dend());
+                //
                 dateTimeBalance(ra) <- currentDateTime();
                 select(ra) <- NULL ;
             }
@@ -357,13 +409,21 @@ importData 'Импорт из бухгалтерии' () {
         
         // Перерасчет остатков по безналичным регистрам учета, начиная с даты импорта
         LOCAL bal = NUMERIC[12,2] ();
-
+        LOCAL dend = DATE ();
+        dend() <- currentDate() ;
+        
         FOR isNoCash(RegisterAccounting ra) DO {
             bal() <- balance(ra, sum(dateimp,-1));
+            //dend() <- dateimp;
+            
             FOR registerAccounting(MoneyMove m)==ra AND date(m)>=dateimp ORDER date(m), codeOperation(m), m DO {
                 bal() <- bal() (+) summa(m);
                 balance(m) <- bal();
+                //dend() <- date(m);
             }
+            // удаление и создание записей с кодом яя
+            createdBalanceEndMonth(ra, dateimp, dend());
+            
             dateTimeBalance(ra) <- currentDateTime();
         }
         //
@@ -385,21 +445,29 @@ importAndRecalculate 'Импорт из бух. + перерасчеты' () {
     DIALOG inputParameters OBJECTS dateimp INPUT DO NEWSESSION NESTED LOCAL {
         LOCAL t = TypeExchange ();
         LOCAL mess = STRING ();
-
+        
         DELETE MoneyMove m WHERE m IS MoneyMove AND date(m) >= dateimp AND isNoCash(registerAccounting(m));
-
+        
         importDataPayment(dateimp);
         importDataExpense(dateimp);
-
+        
         /// Перерасчет остатков по всем регистрам учета
         LOCAL bal = NUMERIC[12,2] ();
+        LOCAL dend = DATE ();
+        dend() <- currentDate() ;
         
         FOR RegisterAccounting ra IS RegisterAccounting DO {
             bal() <- balance(ra, sum(dateimp,-1));
+            //dend() <- dateimp;
+            
             FOR registerAccounting(MoneyMove m)==ra AND date(m)>=dateimp ORDER date(m), codeOperation(m), m DO {
                 bal() <- bal() (+) summa(m);
                 balance(m) <- bal();
+                //dend() <- date(m);
             }
+            // удаление и создание записей с кодом яя
+            createdBalanceEndMonth(ra, dateimp, dend());
+            
             dateTimeBalance(ra) <- currentDateTime();
         }
         

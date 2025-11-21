@@ -10,9 +10,10 @@ dateTimeCopyMoneyAccounting 'Дата копии таблиц <Движение 
 isSalary 'Зарплата (3 таблицы)' = DATA LOCAL NESTED BOOLEAN ();
 isMoneyAccounting 'Движение денег (1 таблица)' = DATA LOCAL NESTED BOOLEAN ();
 strHelp '' = DATA LOCAL NESTED TEXT ();
+strHelp2 '' = DATA LOCAL NESTED TEXT ();
 
 FORM inputParameters 'Копирование таблиц'
-    PROPERTIES() isSalary, isMoneyAccounting, strHelp
+    PROPERTIES() isSalary, isMoneyAccounting, strHelp, strHelp2
 ;
 
 DESIGN inputParameters {
@@ -23,6 +24,7 @@ DESIGN inputParameters {
         NEW cnt {
             fill = 1;
             MOVE PROPERTY (strHelp()) {background = RGB(204, 255, 255); charHeight = 3;}
+            MOVE PROPERTY (strHelp2()) {background = RGB(255, 255, 0); charHeight = 3;}
         }
     }
 }
@@ -130,6 +132,8 @@ copyTables 'Копирование таблиц' () {
     strHelp() <- 'Дата/время последней копии таблиц:\n <Зарплата> - ' + 
                 (IF dateTimeCopySalary() THEN toChar(dateTimeCopySalary(),'DD.MM.YYYY HH24:MI') ELSE 'отсутствует') + '\n<Движение денег> - ' + 
                 (IF dateTimeCopyMoneyAccounting() THEN toChar(dateTimeCopyMoneyAccounting(),'DD.MM.YYYY HH24:MI') ELSE 'отсутствует');
+
+    strHelp2() <- 'Не забудьте сформировать отчет \nсверки сумм в журнале\n "Движение денег" и его копии !';
     
     DIALOG inputParameters DO NEWSESSION {
         
