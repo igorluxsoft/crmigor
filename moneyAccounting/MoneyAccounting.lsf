@@ -216,16 +216,17 @@ createdBalanceEndMonth '' (RegisterAccounting r, DATE df, DATE dt) {
             sign(o) <- '9';
         }
     }
-    
+
+    // плюс месяц к дате окончания периода, чтобы создалась и удалилась последняя запись с кодом яя
+    LOCAL dend = DATE ();
+    dend() <- sumMonth(dt,1);
+
     // удаление записей с кодом яя за период дат
-    DELETE MoneyMove m WHERE m IS MoneyMove AND registerAccounting(m)=r AND operation(m)=uniqueCode('яя', '9') AND date(m)>=df AND date(m)<=dt;
+    DELETE MoneyMove m WHERE m IS MoneyMove AND registerAccounting(m)=r AND operation(m)=uniqueCode('яя', '9') AND date(m)>=df AND date(m)<=dend();
     
     // создание записей с кодом яя за период дат
     LOCAL dd = DATE ();
     dd() <- lastDayOfMonth(df);
-    // плюс месяц к дате окончания периода, чтобы создалась последняя запись с кодом яя
-    LOCAL dend = DATE ();
-    dend() <- sumMonth(dt,1);
     
     // Переменная для остатка, иначе после добавления записи с кодом яя она последняя и остаток = null
     LOCAL bal = NUMERIC[14,2] ();
