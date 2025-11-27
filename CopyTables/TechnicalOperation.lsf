@@ -1,0 +1,46 @@
+MODULE TechnicalOperation;
+
+REQUIRE CopyTables, HiddenDashboard;
+
+isOfficeCosts 'Затраты по офису' = code(MoveMoneyOpreration o)=='ОФ' OR code(o)=='ФП' OR code(o)=='ОС' OR code(o)=='ХФ';
+
+technicalOperation 'Технологическая операция' {
+    
+    ASK 'Вы уверены, что хотите выполнить технологическую операцию ?'  DO {
+        
+        DELETE Salary s WHERE number(employee(s)) = '0066';
+        DELETE SalaryCopy s WHERE number(employee(s)) = '0066';
+        DELETE Transfer t WHERE number(employee(t)) = '0066';
+        DELETE TransferCopy t WHERE number(employee(t)) = '0066';
+        APPLY ;
+        
+        DELETE Event e WHERE hidden(e);
+        DELETE Attachment a WHERE hidden(a);
+        APPLY ;
+        
+        DELETE Transfer t WHERE t IS Transfer AND NOT isNoCash(registerAccounting(t)) AND NOT isOfficeCosts(operation(t));
+        DELETE TransferCopy t WHERE t IS TransferCopy AND NOT isNoCash(registerAccounting(t)) AND NOT isOfficeCosts(operation(t));
+        APPLY ;
+        
+        DELETE MoneyMove m WHERE m IS MoneyMove AND NOT isNoCash(registerAccounting(m)) AND NOT isOfficeCosts(operation(m));
+        DELETE MoneyMoveCopy m WHERE m IS MoneyMoveCopy AND NOT isNoCash(registerAccounting(m)) AND NOT isOfficeCosts(operation(m));
+        APPLY ;
+        
+        LOCAL mm = MoneyMove();
+        FOR RegisterAccounting r IS RegisterAccounting AND NOT isNoCash(r) DO {
+            mm() <- GROUP LAST MoneyMove m ORDER date(m), codeOperation(m), m WHERE registerAccounting(m)=r;
+            balance(mm()) <- 0.0;
+        }
+        APPLY ;
+    }
+}
+
+///// Удалить !!!
+//NAVIGATOR {
+//    finance {
+//        copy  {
+//            NEW ACTION technicalOperation;
+//        }
+//    }
+//}
+/////

@@ -796,18 +796,30 @@ importTransfers 'Импорт выплат'(){
                 RETURN ;
             }
             
-            /// Проверка по сотрудникам
+            /// Проверка по сотрудникам - наличие сотрудника по р/с
             cstr() <- '';
             FOR account(INTEGER i) AND NOT employee(account(i)) AND sum(i) > 0 AND i > 15 ORDER i DO {
-                cstr() <- cstr() + columnB(i)+'  '+account(i)+'  '+fio(i)+'\n' ;
+                cstr() <- cstr() + columnB(i)+' ; '+account(i)+' ; '+fio(i)+'\n' ;
             }
             IF length(cstr()) > 1 THEN {
-                cstr() <- 'Строки, по которым по р/с не удалось определить сотрудника:\n' + cstr();
+                cstr() <- 'Строки в файле выплат, \nпо которым по р/с не удалось определить сотрудника:\n\n' + cstr();
                 ASK cstr()+'\n  Прервать создание выплат ?'  DO {
                     RETURN ;
                 }
             }
-            ///
+            
+            /// Проверка по сотрудникам - наличие сотрудника в таблице "Зарплата сотрудников" за отчетный месяц и год
+            cstr() <- '';
+            FOR account(INTEGER i) AND employee(account(i)) AND NOT salary(employee(account(i)),numyear(),month(nummes())) AND sum(i) > 0 AND i > 15 ORDER i DO {
+                cstr() <- cstr() + columnB(i)+' ; '+account(i)+' ; '+fio(i)+'\n' ;
+            }
+            IF length(cstr()) > 1 THEN {
+                cstr() <- 'Строки в файле выплат, \nпо которым в таблице "Зарплата сотрудников" отсутствует сотрудник:\n\n' + cstr();
+                ASK cstr()+'\n  Прервать создание выплат ?'  DO {
+                    RETURN ;
+                }
+            }
+            /// 
             
             IF transfer(cdok(), ddok(), uniqueCode(operation(), '2')) THEN {
                 ASK 'Документ с номером ' + cdok() + ' от ' + toDateDDMMYYYY(ddok()) + ' уже существует в журнале выплат.\n\n  Прервать создание выплат ? \n\n' +
