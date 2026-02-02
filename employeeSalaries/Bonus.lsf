@@ -61,16 +61,18 @@ nameEmployee 'Сотрудник' (Bonus b) = fullName(employee(b)) CHARWIDTH 20
 
 bonus = GROUP AGGR Bonus b BY year(b), quarter(b), employee(b);
 
-koeff1  'Коэфф-т 1' = DATA INTEGER (Bonus) ;
-koeff2  'Коэфф-т 2' = DATA INTEGER (Bonus) ;
-koeff3  'Коэфф-т 3' = DATA INTEGER (Bonus) ;
-koeff4  'Коэфф-т 4' = DATA INTEGER (Bonus) ;
-koeff5  'Коэфф-т 5' = DATA INTEGER (Bonus) ;
-koeff6  'Коэфф-т 6' = DATA INTEGER (Bonus) ;
-koeff7  'Коэфф-т 7' = DATA INTEGER (Bonus) ;
-koeff8  'Коэфф-т 8' = DATA INTEGER (Bonus) ;
-koeff9  'Коэфф-т 9' = DATA INTEGER (Bonus) ;
-koeff10 'Коэфф-т 10' = DATA INTEGER (Bonus) ;
+koeff1  'Коэф-т 1' = DATA INTEGER (Bonus) ;
+koeff2  'Коэф-т 2' = DATA INTEGER (Bonus) ;
+koeff3  'Коэф-т 3' = DATA INTEGER (Bonus) ;
+koeff4  'Коэф-т 4' = DATA INTEGER (Bonus) ;
+koeff5  'Коэф-т 5' = DATA INTEGER (Bonus) ;
+koeff6  'Коэф-т 6' = DATA INTEGER (Bonus) ;
+koeff7  'Коэф-т 7' = DATA INTEGER (Bonus) ;
+koeff8  'Коэф-т 8' = DATA INTEGER (Bonus) ;
+koeff9  'Коэф-т 9' = DATA INTEGER (Bonus) ;
+koeff10 'Коэф-т 10' = DATA INTEGER (Bonus) ;
+
+koeffItogPrev 'Коэф-т ит.,пред.кв.' = DATA NUMERIC[12,2] (Bonus) ;
 
 countKoeff 'Кол-во введенных коэффициентов' (Bonus b) = (IF koeff1(b) THEN 1) (+) (IF koeff2(b) THEN 1) (+) (IF koeff3(b) THEN 1) (+)
     (IF koeff4(b) THEN 1) (+) (IF koeff5(b) THEN 1) (+) (IF koeff6(b) THEN 1) (+)
@@ -173,20 +175,25 @@ addAllEmployee 'Добавить сотрудников' (ReportingQuarter r) {
         MESSAGE 'Отчетный месяц закрыт.';
         RETURN ;
     }
-    LOCAL maxYear  = INTEGER ();
-    LOCAL maxQuarter = INTEGER ();
-    maxYear()  <- NULL;
-    maxQuarter() <- NULL;
-    maxYear()  <- GROUP MAX year(Bonus b);
-    maxQuarter() <- GROUP MAX quarter(Bonus b) IF year(b)=maxYear() ;
-
+    LOCAL prevYear  = INTEGER ();
+    LOCAL prevQuarter = INTEGER ();
+    IF quarter(r) > 1 THEN {
+        prevYear() <- year(r);
+        prevQuarter() <- quarter(r)-1;
+    }
+    ELSE {
+        prevYear() <- year(r)-1;
+        prevQuarter() <- 4;
+    }
+    
     FOR Employee e IS Employee AND NOT inactive(e) AND personalAccount(e) AND NOT dateDismissal(e)   NEW b = Bonus DO {
         quarter(b) <- quarter(r);
         year(b) <- year(r);
         employee(b) <- e;
+        koeffItogPrev(b) <- koeffItog(bonus(prevYear(),prevQuarter(),e));
     }
     APPLY;
-
+    
 } TOOLBAR ;
 
 background(ReportingQuarter r) = CASE WHEN NOT closed(r) THEN RGB(212,255,212);
@@ -238,7 +245,7 @@ FORM bonuses 'Начисление премии'
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor9() koeff9
     PROPERTIES(b) READONLYIF closed(r) BACKGROUND bgcolor10() koeff10
 
-    PROPERTIES(b) READONLY koeffItog, sumBonus
+    PROPERTIES(b) READONLY koeffItog, koeffItogPrev, sumBonus
 
     OBJECTS a = AbsenceReason
     PROPERTIES(a) name
@@ -410,4 +417,76 @@ setBonusInSalary 'Занести премию в зарплату' (ReportingQua
 EXTEND FORM bonuses
     PROPERTIES(r) READONLYIF closed(r) setBonusInSalary TOOLBAR
 ;
-///
+
+/// Занести в коэффициенты текущего пользователя значения из предыдущего квартала
+FORM setKoeffPrevQuarterParameters 'Коэф-ты из предыдущего квартала'
+    PROPERTIES desc '' = TEXT('При неустановленной галочке заполнятся только пустые значения коэффициентов текущего квартала значениями из предыдущего квартала, иначе - все ')
+
+    OBJECTS par = BOOLEAN PANEL NULL
+    PROPERTIES par 'Заполнить все значения' = VALUE(par)
+;
+
+DESIGN setKoeffPrevQuarterParameters {
+    OBJECTS {
+        NEW dataContainer {
+            MOVE PROPERTY (desc) { charWidth = 50; charHeight = 3;}
+            MOVE PROPERTY (par);
+        }
+        MOVE TOOLBARBOX;
+    }
+}
+
+
+setKoeffPrevQuarter 'Коэф-ты из пред.квар.' (ReportingQuarter r) {
+    IF NOT numberKoeffBonus(currentUser()) THEN {
+        RETURN ;
+    }
+    LOCAL prevYear  = INTEGER ();
+    LOCAL prevQuarter = INTEGER ();
+    IF quarter(r) > 1 THEN {
+        prevYear() <- year(r);
+        prevQuarter() <- quarter(r)-1;
+    }
+    ELSE {
+        prevYear() <- year(r)-1;
+        prevQuarter() <- 4;
+    }
+    
+    DIALOG setKoeffPrevQuarterParameters OBJECTS par INPUT DO {
+        CASE WHEN numberKoeffBonus(currentUser())=1 THEN 
+                FOR Employee e IS Employee AND koeff1(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff1(bonus(year(r),quarter(r),e))) DO 
+                    koeff1(bonus(year(r),quarter(r),e)) <- koeff1(bonus(prevYear(),prevQuarter(),e));
+             WHEN numberKoeffBonus(currentUser())=2 THEN
+                FOR Employee e IS Employee AND koeff2(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff2(bonus(year(r),quarter(r),e))) DO
+                    koeff2(bonus(year(r),quarter(r),e)) <- koeff2(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=3 THEN
+                FOR Employee e IS Employee AND koeff3(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff3(bonus(year(r),quarter(r),e))) DO
+                    koeff3(bonus(year(r),quarter(r),e)) <- koeff3(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=4 THEN
+                FOR Employee e IS Employee AND koeff4(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff4(bonus(year(r),quarter(r),e))) DO
+                    koeff4(bonus(year(r),quarter(r),e)) <- koeff4(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=5 THEN
+                FOR Employee e IS Employee AND koeff5(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff5(bonus(year(r),quarter(r),e))) DO
+                    koeff5(bonus(year(r),quarter(r),e)) <- koeff5(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=6 THEN
+                FOR Employee e IS Employee AND koeff6(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff6(bonus(year(r),quarter(r),e))) DO
+                    koeff6(bonus(year(r),quarter(r),e)) <- koeff6(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=7 THEN
+                FOR Employee e IS Employee AND koeff7(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff7(bonus(year(r),quarter(r),e))) DO
+                    koeff7(bonus(year(r),quarter(r),e)) <- koeff7(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=8 THEN
+                FOR Employee e IS Employee AND koeff8(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff8(bonus(year(r),quarter(r),e))) DO
+                    koeff8(bonus(year(r),quarter(r),e)) <- koeff8(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=9 THEN
+                FOR Employee e IS Employee AND koeff9(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff9(bonus(year(r),quarter(r),e))) DO
+                    koeff9(bonus(year(r),quarter(r),e)) <- koeff9(bonus(prevYear(),prevQuarter(),e));
+            WHEN numberKoeffBonus(currentUser())=10 THEN
+                FOR Employee e IS Employee AND koeff10(bonus(prevYear(),prevQuarter(),e)) AND (par OR NOT koeff10(bonus(year(r),quarter(r),e))) DO
+                    koeff10(bonus(year(r),quarter(r),e)) <- koeff10(bonus(prevYear(),prevQuarter(),e));
+        
+    }
+}
+
+EXTEND FORM bonuses
+    PROPERTIES(r) READONLYIF closed(r) setKoeffPrevQuarter TOOLBAR
+;
