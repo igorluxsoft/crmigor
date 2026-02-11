@@ -12,9 +12,9 @@ nameAuthor 'Автор задачи' (TimeEntry t) = nameAuthor(issue(t));
 nameAssignedTo 'Назначена задача' (TimeEntry t) = nameAssignedTo(issue(t));
 nameTracker 'Трекер задачи' (TimeEntry t) = nameTracker(issue(t));
 nameStatus 'Статус задачи' (TimeEntry t) = nameStatus(issue(t));
-
+complexity 'Сложность' (TimeEntry t) = complexity(issue(t));
 
 EXTEND FORM timeEntries
     PROPERTIES(o) READONLYIF isReadonly() dateTimeCreated, doneRatio, priorityName, separateContract,
-        nameAuthor, nameAssignedTo, nameTracker, nameStatus
+        nameAuthor, nameAssignedTo, nameTracker, nameStatus, complexity
 ;

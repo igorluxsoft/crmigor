@@ -5,7 +5,7 @@ REQUIRE EmployeeDop, Dashboard;
 NAMESPACE ScheduleVacation;
 
 TABLE scheduleVacationYear(Employee, INTEGER);
-countIsVacationPrev 'Остаток на 01.01' = DATA NUMERIC[10,5] (Employee, INTEGER);
+countIsVacationPrev 'Остаток на 01.01, в днях' = DATA NUMERIC[10,5] (Employee, INTEGER);
 
 TABLE scheduleVacationDate(Employee, DATE);
 isVacation '' = DATA BOOLEAN (Employee, DATE);
