@@ -103,7 +103,7 @@ FORM scheduleVacation 'График отпусков'
     
     OBJECTS e = Employee
     PROPERTIES(e) READONLY BACKGROUND backgroundValue(e) shortName STICKY
-    PROPERTIES READONLYIF NOT currentUser()==e BACKGROUND backgroundValue(e) countIsVacationPrev(e,year) STICKY HEADER 'Остаток на 01.01'
+    PROPERTIES READONLYIF NOT currentUser()==e BACKGROUND backgroundValue(e) countIsVacationPrev(e,year) STICKY HEADER 'Дней ост. на 01.01'
     PROPERTIES READONLY daysIsVacation(e,year) PANEL
     PROPERTIES READONLY BACKGROUND backgroundValue(e) countIsVacation(e,year) STICKY HEADER 'Всего дней отпуска за год' 
     FILTERS active(e) AND NOT dateDismissal(e) AND personalAccount(e) AND (NOT regMonth() OR (regMonth() AND countIsVacationMonth(e,year,regMonth())))
