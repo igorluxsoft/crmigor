@@ -146,7 +146,8 @@ FORM reservation 'Резервирование'
     
     OBJECTS d = Reservation 
     PROPERTIES(d) dateFrom, timeFrom, dateTo, timeTo, nameUser
-    PROPERTIES(d) nameEvent ON CHANGE dialogEventsResource(d), nameTypeEvent ON CHANGE dialogEventsResource(d), nameCustomerEvent ON CHANGE dialogEventsResource(d)
+    //PROPERTIES(d) nameEvent ON CHANGE dialogEventsResource(d), nameTypeEvent ON CHANGE dialogEventsResource(d)
+    //PROPERTIES(d) nameCustomerEvent ON CHANGE dialogEventsResource(d)
     PROPERTIES(d) comments
     PROPERTIES(d) NEW, DELETE TOOLBAR 
     ORDERS dateFrom(d), timeFrom(d) 
@@ -189,7 +190,8 @@ FORM resources 'Резервирование ресурсов'
     ORDERS name(r)    
     
     OBJECTS d = Reservation
-    PROPERTIES(d) READONLY dateFrom, timeFrom, dateTo, timeTo, nameUser, nameEvent, nameTypeEvent, nameCustomerEvent, comments, nameCreatedUser, createdDateTime
+    PROPERTIES(d) READONLY dateFrom, timeFrom, dateTo, timeTo, nameUser, comments, nameCreatedUser, createdDateTime
+    //PROPERTIES(d) READONLY nameEvent, nameTypeEvent, nameCustomerEvent
     ORDERS dateFrom(d), timeFrom(d) 
     FILTERS resource(d) == r    
     FILTERGROUP actual
@@ -375,7 +377,8 @@ EXTEND FORM resources
 
     OBJECTS ddLog = ReservationLog GRID LAST 
     PROPERTIES (ddLog) READONLY prevNameUser, nameUser, prevDateFrom, dateFrom, prevTimeFrom, timeFrom, prevDateTo, dateTo, prevTimeTo, timeTo,  
-        nameUserSession, dateSession, timeSession, note, nameEvent, nameTypeEvent, nameCustomerEvent
+        nameUserSession, dateSession, timeSession, note
+    //PROPERTIES (ddLog) READONLY nameEvent, nameTypeEvent, nameCustomerEvent
     ORDERS dateSession(ddLog), timeSession(ddLog)
     FILTERS resource(ddLog) == r
 
