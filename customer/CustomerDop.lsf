@@ -1,0 +1,19 @@
+MODULE CustomerDop;
+
+REQUIRE Customer;
+
+NAMESPACE Customer;
+
+foreign 'Иностранный' = DATA BOOLEAN (Customer);
+
+EXTEND FORM customer
+    PROPERTIES(o) foreign
+;
+
+EXTEND FORM customers
+    PROPERTIES(o) READONLY foreign
+;
+
+EXTEND FORM dialogCustomers
+    PROPERTIES(o) READONLY foreign
+;

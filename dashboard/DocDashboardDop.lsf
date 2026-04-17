@@ -1,0 +1,11 @@
+MODULE DocDashboardDop;
+
+REQUIRE DocDashboardNew, CustomerDop;
+    
+NAMESPACE Doc;
+
+foreignCustomer 'Иностранный' (Document d) = foreign(customer(d));
+
+EXTEND FORM docDashboard 
+    PROPERTIES(d) READONLY foreignCustomer
+;

@@ -1,8 +1,8 @@
 MODULE Igor;
 
 REQUIRE Salary, MoneyAccounting, EmployeeDop, CopyTables, PaymentDop, ExpenseDop, PaymentProcessDashboardDop, EmployeeExpenseDop, EventDashboardDop,
-        ScheduleVacation, Liability, Bonus, DocFirm, TimeEntryDop, TimesheetDashboardDop, TimeEntryTotalDashboardvDop, TechnicalOperation
-        //HumanResources
+        ScheduleVacation, Liability, Bonus, DocFirm, TimeEntryDop, TimesheetDashboardDop, TimeEntryTotalDashboardvDop, TechnicalOperation,
+        HumanResources, CustomerDop, DocDashboardDop
         ;
 
 
