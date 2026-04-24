@@ -1,6 +1,6 @@
 MODULE TimeEntryTotalDashboardvDop;
 
-REQUIRE TimeEntryTotalDashboard, ProjectExternal;
+REQUIRE TimeEntryTotalDashboard, ProjectExternal, EmployeeDop;
 
 NAMESPACE Project;
 
@@ -95,3 +95,8 @@ DESIGN timeEntryDashboard {
         }
     }
 }
+
+EXTEND FORM timeEntryDashboard
+    EXTEND FILTERGROUP e  FILTER 'С заполнением времени' isFillingTime(e) DEFAULT
+    EXTEND FILTERGROUP ee FILTER 'С заполнением времени' isFillingTime(ee) DEFAULT
+;

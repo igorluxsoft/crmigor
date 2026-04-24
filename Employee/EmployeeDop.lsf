@@ -5,19 +5,23 @@ REQUIRE EmployeeNew;
 NAMESPACE Contact;
 
 dateDismissal 'Дата увольнения' = DATA DATE (Employee);
+isFillingTime 'Заполнение времени' = DATA BOOLEAN (Employee);
 
 EXTEND FORM employees
-    PROPERTIES(o) READONLY dateDismissal
+    PROPERTIES(o) READONLY dateDismissal, isFillingTime
 ;
 
 EXTEND FORM employee
-    PROPERTIES(o) dateDismissal
+    PROPERTIES(o) dateDismissal, isFillingTime
 ;
 
 DESIGN employee {
     OBJECTS {
         dop3 {
             MOVE PROPERTY (dateDismissal(o)) AFTER PROPERTY (employmentDate(o));
+        }
+        note {
+            MOVE PROPERTY (isFillingTime(o)) AFTER PROPERTY (inactive(o));
         }
     }
 }
