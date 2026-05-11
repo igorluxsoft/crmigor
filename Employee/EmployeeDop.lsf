@@ -26,3 +26,24 @@ DESIGN employee {
     }
 }
 
+CLASS Child 'Дети';
+name 'Имя' = DATA STRING[50] (Child) ;
+date 'Дата рождения' = DATA DATE (Child) ;
+employee = DATA Employee (Child) NONULL AUTOSET;
+lastNameEmployee 'Сотрудник' (Child c) = lastName(employee(c));
+
+EXTEND FORM employees
+    OBJECTS c = Child
+    PROPERTIES(c) READONLY date, name, lastNameEmployee
+    ORDERS date(c)
+    FILTERGROUP childEmployee
+        FILTER 'По сотруднику' employee(c)=o DEFAULT
+;
+
+EXTEND FORM employee
+    OBJECTS c = Child
+    PROPERTIES(c) name, date
+    PROPERTIES(c) NEW, DELETE
+    ORDERS date(c)
+    FILTERS employee(c)=o
+;

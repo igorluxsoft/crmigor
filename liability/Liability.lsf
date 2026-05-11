@@ -89,8 +89,16 @@ EXTEND FORM employees
 ;
 
 DESIGN employees {
-    BOX(o) { fill=4;}
-    BOX(pl) { fill=1;}
+    OBJECTS {
+        BOX(o) { fill=4;}
+        NEW doptel {
+            horizontal = TRUE ;
+            fill = 1;
+            MOVE BOX(pl) { fill=8;}
+            MOVE BOX(c) {fill = 1;}
+        }
+    }
+    MOVE TOOLBARBOX ;
 }
 
 EXTEND FORM employee
@@ -107,8 +115,9 @@ DESIGN employee {
         NEW doptel {
             horizontal = TRUE ;
             fill = 1;
-            MOVE BOX(p) {fill = 1;}
-            MOVE BOX(pl) {fill = 1;}
+            MOVE BOX(p) {fill = 2;}
+            MOVE BOX(pl) {fill = 8;}
+            MOVE BOX(c) {fill = 1;}
         }
     }    
     MOVE TOOLBARBOX ;
