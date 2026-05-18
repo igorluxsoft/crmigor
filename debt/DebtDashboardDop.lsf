@@ -1,0 +1,76 @@
+MODULE DebtDashboardDop;
+
+REQUIRE DebtDashboardNew;
+
+NAMESPACE Contract;
+
+sumItog 'Сумма задолженности, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Contract);
+paidItog 'Оплачено, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Contract);
+balanceItog 'Остаток, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Contract);
+
+sumItog 'Сумма задолженности, итог' = DATA LOCAL NESTED NUMERIC[16,5] (LegalEntity);
+paidItog 'Оплачено, итог' = DATA LOCAL NESTED NUMERIC[16,5] (LegalEntity);
+balanceItog 'Остаток, итог' = DATA LOCAL NESTED NUMERIC[16,5] (LegalEntity);
+
+sumItog 'Сумма задолженности, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Customer);
+paidItog 'Оплачено, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Customer);
+balanceItog 'Остаток, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Customer);
+
+FORM reportDebtsAll 'Все задолженности'
+    OBJECTS dd = DATE PANEL
+    PROPERTIES vd = VALUE (dd)
+    
+    OBJECTS c = Customer
+    PROPERTIES(c) name, sumItog, paidItog, balanceItog
+    FILTERS sumItog(c) OR paidItog(c) OR balanceItog(c)
+    ORDERS name(c)
+    
+    OBJECTS lg = LegalEntity
+    PROPERTIES(lg) name, sumItog, paidItog, balanceItog
+    FILTERS sumItog(lg) OR paidItog(lg) OR balanceItog(lg)
+    ORDERS name(lg)
+    
+    OBJECTS co = Contract
+    PROPERTIES(co) name, number, date, nameType, sumItog, paidItog, balanceItog
+    FILTERS sumItog(co) OR paidItog(co) OR balanceItog(co)
+    ORDERS date(co), number(co)
+    
+    OBJECTS db = Debt
+    PROPERTIES(db) date,
+        sum, paid, balance, numberAct, dateAct, nameAct
+    
+    FILTERS customer(db) = c,
+            contract(db) = co,
+            legalEntity(contract(db)) = lg,
+            NOT inactive(db),
+            date(db) <= dd,
+            abs(balance(db)) > 0
+    ORDERS date(db)
+;
+
+
+reportDebtsAll 'Все задолженности (XLS)' (DATE dd) {
+    sumItog(Contract c) <- GROUP SUM sum(Debt d) IF contract(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    paidItog(Contract c) <- GROUP SUM paid(Debt d) IF contract(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    balanceItog(Contract c) <- GROUP SUM balance(Debt d) IF contract(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+
+    sumItog(LegalEntity c) <- GROUP SUM sum(Debt d) IF legalEntity(contract(d))=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    paidItog(LegalEntity c) <- GROUP SUM paid(Debt d) IF legalEntity(contract(d))=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    balanceItog(LegalEntity c) <- GROUP SUM balance(Debt d) IF legalEntity(contract(d))=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    
+    sumItog(Customer c) <- GROUP SUM sum(Debt d) IF customer(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    paidItog(Customer c) <- GROUP SUM paid(Debt d) IF customer(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    balanceItog(Customer c) <- GROUP SUM balance(Debt d) IF customer(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+    
+    PRINT reportDebtsAll OBJECTS dd = dd XLSX ;
+}
+
+EXTEND FORM debtDashboard
+    PROPERTIES reportDebtsAll(dd)
+;
+
+DESIGN debtDashboard {
+    BOX (dd) {
+        MOVE PROPERTY (reportDebtsAll(dd));
+    }
+}
