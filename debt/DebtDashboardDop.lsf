@@ -66,12 +66,33 @@ reportDebtsAll 'Задолженности (XLS)' (DATE dd, Customer cu) {
     PRINT reportDebtsAll OBJECTS dd = dd, c = cu XLSX ;
 }
 
+FORM reportNegativeDebts 'Отрицат. задол-ти'
+    OBJECTS dd = DATE PANEL 
+    PROPERTIES vd = VALUE (dd)
+
+    OBJECTS db = Debt
+    PROPERTIES(db) numberContract, dateContract, nameLegalEntity, nameCustomer
+    PROPERTIES(db) date, sum, paid, balance, numberAct, dateAct, nameAct
+
+    FILTERS NOT inactive(db),
+        IF filterCustomerContractType() THEN type(contract(db)) == filterCustomerContractType() ELSE TRUE ,
+        date(db) <= dd,
+        balance(db) < 0
+    ORDERS nameCustomer(db), nameLegalEntity(db), date(db)
+;
+
+reportNegativeDebts 'Отрицат. задол-ти' (DATE dd) {
+    PRINT reportNegativeDebts OBJECTS dd = dd;
+}
+
 EXTEND FORM debtDashboard
     PROPERTIES reportDebtsAll(dd,c)
+    PROPERTIES reportNegativeDebts(dd)
 ;
 
 DESIGN debtDashboard {
     BOX (dd) {
         MOVE PROPERTY (reportDebtsAll(dd,c));
+        MOVE PROPERTY (reportNegativeDebts(dd));
     }
 }
