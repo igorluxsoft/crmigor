@@ -185,8 +185,9 @@
 				<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 					<reportElement style="GroupCellStyle1" positionType="Float" stretchType="RelativeToBandHeight" x="280" y="0" width="260" height="18" backcolor="#FAFAD2" uuid="1c5febd9-b012-42a2-a592-9a8e6ce35c67">
 						<property name="com.jaspersoft.studio.unit.x" value="px"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
 					</reportElement>
 					<textElement textAlignment="Left">
 						<font fontName="Times New Roman" size="11"/>
@@ -195,9 +196,10 @@
 				</textField>
 				<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 					<reportElement style="GroupCellStyle1" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="0" width="100" height="18" backcolor="#FAFAD2" uuid="999a9df3-2c2d-444c-b1ac-4986243163fc">
-						<property name="com.jaspersoft.studio.unit.y" value="px"/>
 						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
 					</reportElement>
 					<textElement textAlignment="Left">
 						<font fontName="Times New Roman" size="11"/>
@@ -207,8 +209,9 @@
 				<textField textAdjust="StretchHeight" pattern="dd.MM.yy" isBlankWhenNull="true">
 					<reportElement style="GroupCellStyle1" positionType="Float" stretchType="RelativeToBandHeight" x="220" y="0" width="60" height="18" backcolor="#FAFAD2" uuid="0d817593-e509-47ed-bb99-051ff62ab372">
 						<property name="com.jaspersoft.studio.unit.x" value="px"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
 					</reportElement>
 					<textElement textAlignment="Center">
 						<font fontName="Times New Roman" size="11"/>
@@ -220,6 +223,7 @@
 						<property name="com.jaspersoft.studio.unit.x" value="px"/>
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
 					</reportElement>
 					<textElement textAlignment="Left">
 						<font fontName="Times New Roman" size="11"/>
@@ -424,7 +428,9 @@
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="120" y="0" width="100" height="18" uuid="fb6df80b-0cdf-47b3-9a9e-e008b73ab6f3">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
 				</reportElement>
 				<textElement textAlignment="Left">
 					<font fontName="Times New Roman" size="11"/>
@@ -434,7 +440,9 @@
 			<textField textAdjust="StretchHeight" pattern="dd.MM.yy" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="220" y="0" width="60" height="18" uuid="959973f4-2b1a-4769-bf56-8481434aa871">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
 				</reportElement>
 				<textElement textAlignment="Center">
 					<font fontName="Times New Roman" size="11"/>
@@ -444,7 +452,9 @@
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="280" y="0" width="260" height="18" uuid="f729110a-7f75-4ba3-a7d4-969a5b344014">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="net.sf.jasperreports.export.xls.auto.fit.row" value="true"/>
 				</reportElement>
 				<textElement textAlignment="Left">
 					<font fontName="Times New Roman" size="11"/>
