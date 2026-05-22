@@ -45,8 +45,8 @@
 	<field name="nameCustomer(db)" class="java.lang.String"/>
 	<field name="date(db)" class="java.util.Date"/>
 	<field name="sum(db)" class="java.math.BigDecimal"/>
-	<field name="paid(db)" class="java.math.BigDecimal"/>
-	<field name="balance(db)" class="java.math.BigDecimal"/>
+	<field name="paid(db,dd)" class="java.math.BigDecimal"/>
+	<field name="balance(db,dd)" class="java.math.BigDecimal"/>
 	<field name="numberAct(db)" class="java.lang.String"/>
 	<field name="dateAct(db)" class="java.util.Date"/>
 	<field name="nameAct(db)" class="java.lang.String"/>
@@ -257,7 +257,7 @@
 				<textElement textAlignment="Right">
 					<font fontName="Times New Roman" size="11"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{paid(db)}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{paid(db,dd)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="770" y="0" width="70" height="18" uuid="f117e349-625a-4ac0-9b55-8b83ca43fa70">
@@ -268,7 +268,7 @@
 				<textElement textAlignment="Right">
 					<font fontName="Times New Roman" size="11"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{balance(db)}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{balance(db,dd)}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
 				<reportElement style="GroupCellStyle0" positionType="Float" stretchType="RelativeToBandHeight" x="440" y="0" width="70" height="18" uuid="5a4084ff-a75b-4221-adb8-fd6b00dc6c0f">

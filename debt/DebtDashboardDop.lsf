@@ -66,18 +66,22 @@ reportDebtsAll 'Задолженности (XLS)' (DATE dd, Customer cu) {
     PRINT reportDebtsAll OBJECTS dd = dd, c = cu XLSX ;
 }
 
+balance (Debt db, DATE d) = sum(db) (-) paid(db,d);
+
 FORM reportNegativeDebts 'Отрицат. задол-ти'
     OBJECTS dd = DATE PANEL 
     PROPERTIES vd = VALUE (dd)
 
     OBJECTS db = Debt
     PROPERTIES(db) numberContract, dateContract, nameLegalEntity, nameCustomer
-    PROPERTIES(db) date, sum, paid, balance, numberAct, dateAct, nameAct
-
+    PROPERTIES(db) date, sum, balance, numberAct, dateAct, nameAct
+    PROPERTIES(db,dd) paid, balance
+    
     FILTERS NOT inactive(db),
         IF filterCustomerContractType() THEN type(contract(db)) == filterCustomerContractType() ELSE TRUE ,
-        date(db) <= dd,
-        balance(db) < 0
+        overPayment(db,dd)='+',
+        date(db) <= dd
+        //balance(db) < 0
     ORDERS nameCustomer(db), nameLegalEntity(db), date(db)
 ;
 
