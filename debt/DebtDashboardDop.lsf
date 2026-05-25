@@ -4,99 +4,51 @@ REQUIRE DebtDashboardNew;
 
 NAMESPACE Contract;
 
-sumItog 'Сумма задолженности, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Contract);
-paidItog 'Оплачено, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Contract);
-balanceItog 'Остаток, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Contract);
+paidAgreementDop 'Оплачено' (Debt d, DATE dt) = PARTITION UNGROUP paidPayment
+    LIMIT STRICT sum(d) IF date(d)<=dt
+    ORDER date(d),d
+    BY agreement(d), dt;
 
-sumItog 'Сумма задолженности, итог' = DATA LOCAL NESTED NUMERIC[16,5] (LegalEntity);
-paidItog 'Оплачено, итог' = DATA LOCAL NESTED NUMERIC[16,5] (LegalEntity);
-balanceItog 'Остаток, итог' = DATA LOCAL NESTED NUMERIC[16,5] (LegalEntity);
+paidNotDebtDop (Contract c, DATE dt) = paid(c, dt) (-) [GROUP SUM paidAgreementDop(Debt d, dt) BY contract(d)](c);
 
-sumItog 'Сумма задолженности, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Customer);
-paidItog 'Оплачено, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Customer);
-balanceItog 'Остаток, итог' = DATA LOCAL NESTED NUMERIC[16,5] (Customer);
+paidContractDop 'Оплачено' (Debt d, DATE dt) = PARTITION UNGROUP paidNotDebtDop
+    LIMIT STRICT (sum(d) (-) paidAgreementDop(d, dt)) IF NOT agreement(d) AND date(d)<=dt
+    ORDER date(d),d
+    BY contract(d), dt;
 
-FORM reportDebtsAll 'Задолженности'
-    OBJECTS dd = DATE PANEL, cu = Customer PANEL 
-    PROPERTIES vd = VALUE (dd)
-    
-    OBJECTS c = Customer
-    PROPERTIES(c) name, sumItog, paidItog, balanceItog
-    //FILTERS sumItog(c) OR paidItog(c) OR balanceItog(c)
-    FILTERS c = cu
-    ORDERS name(c)
-    
-    OBJECTS lg = LegalEntity
-    PROPERTIES(lg) name, sumItog, paidItog, balanceItog
-    FILTERS sumItog(lg) OR paidItog(lg) OR balanceItog(lg)
-    ORDERS name(lg)
-    
-    OBJECTS co = Contract
-    PROPERTIES(co) name, number, date, nameType, sumItog, paidItog, balanceItog
-    FILTERS sumItog(co) OR paidItog(co) OR balanceItog(co)
-    ORDERS date(co), number(co)
-    
-    OBJECTS db = Debt
-    PROPERTIES(db) date,
-        sum, paid, balance, numberAct, dateAct, nameAct
-    
-    FILTERS customer(db) = c,
-            contract(db) = co,
-            legalEntity(contract(db)) = lg,
-            NOT inactive(db),
-            date(db) <= dd,
-            abs(balance(db)) > 0
-    ORDERS date(db)
-;
+paidDop 'Оплачено' (Debt d, DATE dt) = paidAgreementDop(d, dt) (+) paidContractDop(d, dt);
 
+sumDebtDop 'Сумма задолженностей' (Customer c, ContractType t, DATE d) =
+    GROUP SUM sum(Debt dd) (-) paidDop(dd, d) IF date(dd) <= d AND NOT inactive(dd) BY customer(dd), type(contract(dd));
 
-reportDebtsAll 'Задолженности (XLS)' (DATE dd, Customer cu) {
-    sumItog(Contract c) <- GROUP SUM sum(Debt d) IF contract(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    paidItog(Contract c) <- GROUP SUM paid(Debt d) IF contract(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    balanceItog(Contract c) <- GROUP SUM balance(Debt d) IF contract(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
+balanceDop (Debt db, DATE d) = sum(db) (-) paidDop(db,d);
 
-    sumItog(LegalEntity c) <- GROUP SUM sum(Debt d) IF legalEntity(contract(d))=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    paidItog(LegalEntity c) <- GROUP SUM paid(Debt d) IF legalEntity(contract(d))=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    balanceItog(LegalEntity c) <- GROUP SUM balance(Debt d) IF legalEntity(contract(d))=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    
-    sumItog(Customer c) <- GROUP SUM sum(Debt d) IF customer(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    paidItog(Customer c) <- GROUP SUM paid(Debt d) IF customer(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    balanceItog(Customer c) <- GROUP SUM balance(Debt d) IF customer(d)=c AND NOT inactive(d) AND date(d) <= dd AND abs(balance(d)) > 0;
-    
-    PRINT reportDebtsAll OBJECTS dd = dd, c = cu XLSX ;
-}
-
-balance (Debt db, DATE d) = sum(db) (-) paid(db,d);
-
-FORM reportNegativeDebts 'Отрицат. задол-ти'
-    OBJECTS dd = DATE PANEL 
+FORM reportNegativeDebts 'Скрытые переплаты (XLS)'
+    OBJECTS dd = DATE PANEL
     PROPERTIES vd = VALUE (dd)
 
     OBJECTS db = Debt
     PROPERTIES(db) numberContract, dateContract, nameLegalEntity, nameCustomer
-    PROPERTIES(db) date, sum, balance, numberAct, dateAct, nameAct
-    PROPERTIES(db,dd) paid, balance
-    
+    PROPERTIES(db) date, sum, numberAct, dateAct, nameAct
+    PROPERTIES(db,dd) paidDop, balanceDop
+
     FILTERS NOT inactive(db),
-        IF filterCustomerContractType() THEN type(contract(db)) == filterCustomerContractType() ELSE TRUE ,
-        overPayment(db,dd)='+',
-        date(db) <= dd
-        //balance(db) < 0
+            IF filterCustomerContractType() THEN type(contract(db)) == filterCustomerContractType() ELSE TRUE ,
+            date(db) <= dd,
+            (NOT balance(db) OR balance(db) = 0.00) AND balanceDop(db,dd) < 0.00
     ORDERS nameCustomer(db), nameLegalEntity(db), date(db)
 ;
 
-reportNegativeDebts 'Отрицат. задол-ти' (DATE dd) {
+reportNegativeDebts 'Скрытые переплаты' (DATE dd) {
     PRINT reportNegativeDebts OBJECTS dd = dd;
 }
 
 EXTEND FORM debtDashboard
-    PROPERTIES reportDebtsAll(dd,c)
     PROPERTIES reportNegativeDebts(dd)
 ;
 
 DESIGN debtDashboard {
     BOX (dd) {
-        MOVE PROPERTY (reportDebtsAll(dd,c));
         MOVE PROPERTY (reportNegativeDebts(dd));
     }
 }
