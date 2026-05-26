@@ -23,7 +23,7 @@ sumDebtDop 'Сумма задолженностей' (Customer c, ContractType t
 
 balanceDop (Debt db, DATE d) = sum(db) (-) paidDop(db,d);
 
-FORM reportNegativeDebts 'Скрытые переплаты (XLS)'
+FORM reportNegativeDebts 'Скрытые переплаты'
     OBJECTS dd = DATE PANEL
     PROPERTIES vd = VALUE (dd)
 

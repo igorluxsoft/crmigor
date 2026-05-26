@@ -1,0 +1,67 @@
+MODULE SoftwareModules;
+
+REQUIRE MasterData;
+
+NAMESPACE SoftwareModules;
+
+CLASS ComputerProgram 'Компьютерная программа';
+TABLE computerProgram (ComputerProgram);
+
+code 'Код' = DATA STRING[20] (ComputerProgram);
+name 'Наименование программы' = DATA STRING[200] (ComputerProgram);
+
+CLASS SoftwareModule 'Программный модуль';
+TABLE softwareModule (SoftwareModule);
+
+computerProgram = DATA ComputerProgram (SoftwareModule) AUTOSET;
+nameComputerProgram 'Наименование программы' (SoftwareModule s) = name(computerProgram(s));
+code 'Код' = DATA STRING[20] (SoftwareModule);
+name 'Наименование модуля' = DATA STRING[200] (SoftwareModule);
+dateEntry 'Дата ввода' = DATA DATE (SoftwareModule);
+
+FORM computerProgram 'Компьютерная программа'
+    OBJECTS c = ComputerProgram PANEL
+    PROPERTIES(c) code, name
+
+    EDIT ComputerProgram OBJECT c
+;
+
+FORM softwareModule 'Программный модуль'
+    OBJECTS s = SoftwareModule PANEL
+    PROPERTIES(s) code, name, dateEntry
+
+    EDIT SoftwareModule OBJECT s
+;
+
+FORM softwareModules 'Программные модули'
+    OBJECTS c = ComputerProgram 
+    PROPERTIES(c) READONLY code, name
+    PROPERTIES (c) NEWSESSION NEW, EDIT, DELETE
+    ORDERS code(c), name(c)
+    
+    OBJECTS s = SoftwareModule
+    PROPERTIES(s) READONLY code, name, dateEntry
+    PROPERTIES (s) NEWSESSION NEW, EDIT, DELETE
+    ORDERS code(s), name(s)
+    FILTERGROUP cp FILTER 'По компьютерной программе' computerProgram(s)=c DEFAULT
+;
+
+NAVIGATOR {
+    templatesNavigator {
+        NEW softwareModules;
+    }
+}
+
+select = DATA LOCAL NESTED BOOLEAN (SoftwareModule);
+
+FORM softwareModulesDialog 'Программные модули'
+    OBJECTS c = ComputerProgram
+    PROPERTIES(c) READONLY code, name
+    ORDERS code(c), name(c)
+    
+    OBJECTS s = SoftwareModule
+    PROPERTIES(s) select 
+    PROPERTIES(s) READONLY code, name, dateEntry
+    ORDERS code(s), name(s)
+    FILTERGROUP cp FILTER 'По компьютерной программе' computerProgram(s)=c DEFAULT
+;
