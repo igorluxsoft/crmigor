@@ -3,12 +3,23 @@ MODULE PatternWordDop;
 REQUIRE PatternWord, SoftwareModules;
 
 setTextDop 'Формировать значение' (TemplateEntry te) {
+    LOCAL countSubMoule = INTEGER();
     DIALOG softwareModulesDialog OBJECTS c INPUT DO {
-        value(te) <- name(c);
-        FOR select(SoftwareModule s) DO {
-            value(te) <- value(te) + '\n' + name(s);
+        value(te) <- name(c) + ' в составе модулей: ';
+        FOR select(SoftwareModule s) ORDER code(s) DO {
+            value(te) <- value(te) + '\n' + '- ' + name(s);
             select(s) <- NULL;
+            countSubMoule() <- 0;
+            FOR select(SubModule sm) AND softwareModule(sm)=s ORDER code(sm) DO {
+                value(te) <- value(te) + IF countSubMoule()=0 THEN ' в составе подмодулей: ' ELSE ',' ;
+                value(te) <- value(te) + name(sm);
+                select(sm) <- NULL;
+                countSubMoule() <- countSubMoule() + 1;
+            }
+            value(te) <- value(te) + ';';
         }
+        IF length(value(te)) > 0 AND substr(value(te),length(value(te)),1) = ';' THEN
+            value(te) <- substr(value(te),1,length(value(te))-1) + '.';
     }     
 }
 

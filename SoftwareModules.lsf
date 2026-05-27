@@ -19,18 +19,34 @@ code 'Код' = DATA STRING[20] (SoftwareModule);
 name 'Наименование модуля' = DATA STRING[200] (SoftwareModule);
 dateEntry 'Дата ввода' = DATA DATE (SoftwareModule);
 
+CLASS SubModule 'Подмодуль';
+TABLE subModule (SubModule);
+
+softwareModule = DATA SoftwareModule (SubModule) AUTOSET;
+nameSoftwareModule 'Наименование модуля' (SubModule sm) = name(softwareModule(sm));
+code 'Код' = DATA STRING[20] (SubModule);
+name 'Наименование подмодуля' = DATA STRING[200] (SubModule);
+dateEntry 'Дата ввода' = DATA DATE (SubModule);
+
 FORM computerProgram 'Компьютерная программа'
     OBJECTS c = ComputerProgram PANEL
     PROPERTIES(c) code, name
-
+    
     EDIT ComputerProgram OBJECT c
 ;
 
 FORM softwareModule 'Программный модуль'
     OBJECTS s = SoftwareModule PANEL
     PROPERTIES(s) code, name, dateEntry
-
+    
     EDIT SoftwareModule OBJECT s
+;
+
+FORM subModule 'Подмодуль'
+    OBJECTS sm = SubModule PANEL
+    PROPERTIES(sm) code, name, dateEntry
+
+    EDIT SubModule OBJECT sm
 ;
 
 FORM softwareModules 'Программные модули'
@@ -44,7 +60,20 @@ FORM softwareModules 'Программные модули'
     PROPERTIES (s) NEWSESSION NEW, EDIT, DELETE
     ORDERS code(s), name(s)
     FILTERGROUP cp FILTER 'По компьютерной программе' computerProgram(s)=c DEFAULT
+
+    OBJECTS sm = SubModule
+    PROPERTIES(sm) READONLY code, name, dateEntry
+    PROPERTIES (sm) NEWSESSION NEW, EDIT, DELETE
+    ORDERS code(sm), name(sm)
+    FILTERGROUP mod FILTER 'По программному модулю' softwareModule(sm)=s DEFAULT
 ;
+
+DESIGN softwareModules {
+    MOVE BOX(c) {fill=1;}
+    MOVE BOX(s) {fill=8;}
+    MOVE BOX(sm) {fill=8;}
+    MOVE TOOLBARBOX;
+}
 
 NAVIGATOR {
     templatesNavigator {
@@ -52,7 +81,8 @@ NAVIGATOR {
     }
 }
 
-select = DATA LOCAL NESTED BOOLEAN (SoftwareModule);
+select 'Отм.' = DATA LOCAL NESTED BOOLEAN (SoftwareModule);
+select 'Отм.' = DATA LOCAL NESTED BOOLEAN (SubModule);
 
 FORM softwareModulesDialog 'Программные модули'
     OBJECTS c = ComputerProgram
@@ -60,8 +90,21 @@ FORM softwareModulesDialog 'Программные модули'
     ORDERS code(c), name(c)
     
     OBJECTS s = SoftwareModule
-    PROPERTIES(s) select 
+    PROPERTIES(s) select
     PROPERTIES(s) READONLY code, name, dateEntry
     ORDERS code(s), name(s)
     FILTERGROUP cp FILTER 'По компьютерной программе' computerProgram(s)=c DEFAULT
+
+    OBJECTS sm = SubModule
+    PROPERTIES(sm) select
+    PROPERTIES(sm) READONLY code, name, dateEntry
+    ORDERS code(sm), name(sm)
+    FILTERGROUP mod FILTER 'По программному модулю' softwareModule(sm)=s DEFAULT
 ;
+
+DESIGN softwareModulesDialog {
+    MOVE BOX(c) {fill=1;}
+    MOVE BOX(s) {fill=8;}
+    MOVE BOX(sm) {fill=8;}
+    MOVE TOOLBARBOX;
+}
