@@ -232,7 +232,7 @@ createdBalanceEndMonth '' (RegisterAccounting r, DATE df, DATE dt) {
     LOCAL bal = NUMERIC[14,2] ();
     
     WHILE dd() <= dend() DO {
-        bal() <- balance(r,dd());
+        bal() <- OVERRIDE balance(r,dd()), 0.0;
         NEW m = MoneyMove {
             date(m) <- dd();
             registerAccounting(m) <- r;
@@ -263,7 +263,7 @@ recalculateBalance 'Перерасчет остатков' () {
                 //dend() <- NULL ;
                 
                 FOR registerAccounting(MoneyMove m)==ra ORDER date(m), codeOperation(m), m DO {
-                    bal() <- bal() (+) summa(m);
+                    bal() <- OVERRIDE bal() (+) summa(m), 0.0;
                     balance(m) <- bal();
                     IF NOT dbeg() THEN dbeg() <- date(m);
                     //dend() <- date(m);
