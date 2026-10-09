@@ -363,18 +363,48 @@ addAllSalaries 'Добавить сотрудников' (ReportingMonth r) {
     maxYear()  <- GROUP MAX year(Salary s);
     maxMonth() <- month(GROUP MAX number(month(Salary s)) IF year(s)=maxYear()) ;
     
-    FOR Employee e IS Employee AND NOT inactive(e) AND personalAccount(e) AND NOT dateDismissal(e) NEW s = Salary DO {
-        month(s) <- month(r);
-        year(s) <- year(r);
-        employee(s) <- e;
-        sumSalary(s) <- sumSalary(salary(e,maxYear(),maxMonth()));
-        note1(s) <- note1(salary(e,maxYear(),maxMonth()));
-        note2(s) <- note2(salary(e,maxYear(),maxMonth()));
-        sumPay(s) <- sumSalary(s);
-        payExtra(s) <- sumPay(s) (-) sumTransfer(e,month(r),year(r));
-        deltaReal(s) <- sumPay(s) (-) sumTransfer(e,month(r),year(r));
-        IF curRate(r) AND curRate(r) > 0.0 THEN sumPayUSD(s) <- round2(sumPay(s) / curRate(r));
+    // предыдущий отчетный месяц
+    LOCAL lYear = INTEGER ();
+    LOCAL lMonth = Month ();
+    lYear() <- year(r);
+    lMonth() <- month(r);
+    IF number(lMonth()) > 1 THEN
+        lMonth() <- month(number(lMonth()) - 1) ;
+    ELSE {
+        lMonth() <- month(12);
+        lYear() <- lYear() - 1;
     }
+    //
+    
+    IF NOT reportingMonth(lYear(),lMonth()) THEN {
+
+        FOR Employee e IS Employee AND NOT inactive(e) AND personalAccount(e) AND NOT dateDismissal(e) NEW s = Salary DO {
+            month(s) <- month(r);
+            year(s) <- year(r);
+            employee(s) <- e;
+            sumSalary(s) <- sumSalary(salary(e, maxYear(), maxMonth()));
+            note1(s) <- note1(salary(e, maxYear(), maxMonth()));
+            note2(s) <- note2(salary(e, maxYear(), maxMonth()));
+            sumPay(s) <- sumSalary(s);
+            payExtra(s) <- sumPay(s) (-) sumTransfer(e, month(r), year(r));
+            deltaReal(s) <- sumPay(s) (-) sumTransfer(e, month(r), year(r));
+            IF curRate(r) AND curRate(r) > 0.0 THEN sumPayUSD(s) <- round2(sumPay(s) / curRate(r));
+        }
+    }
+    ELSE {
+        FOR month(Salary sp) == lMonth() AND year(sp) == lYear() NEW s = Salary DO {
+            month(s) <- month(r);
+            year(s) <- year(r);
+            employee(s) <- employee(sp);
+            sumSalary(s) <- sumSalary(salary(employee(sp), maxYear(), maxMonth()));
+            note1(s) <- note1(salary(employee(sp), maxYear(), maxMonth()));
+            note2(s) <- note2(salary(employee(sp), maxYear(), maxMonth()));
+            sumPay(s) <- sumSalary(s);
+            payExtra(s) <- sumPay(s) (-) sumTransfer(employee(sp), month(r), year(r));
+            deltaReal(s) <- sumPay(s) (-) sumTransfer(employee(sp), month(r), year(r));
+            IF curRate(r) AND curRate(r) > 0.0 THEN sumPayUSD(s) <- round2(sumPay(s) / curRate(r));
+        }
+    }   
     APPLY; 
     
 } TOOLBAR ;
